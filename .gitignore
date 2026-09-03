@@ -1,0 +1,22 @@
+# Environment
+.venv/
+.env
+!.env.example
+
+# 🐍 Python & Caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.coverage
+
+# 🐳 LocalStack / Persistent Storage
+volume/
+
+# 🛠️ IDEs & Editors
+.vscode/
+.idea/
+
+# 🖥️ OS Files
+.DS_Store
+Thumbs.db

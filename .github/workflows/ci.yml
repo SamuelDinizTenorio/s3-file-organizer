@@ -1,0 +1,61 @@
+name: CI Quality, Security & Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+
+    services:
+      localstack:
+        image: localstack/localstack:latest
+        ports:
+          - 4566:4566
+        env:
+          SERVICES: s3
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip" 
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements-dev.txt ]; then 
+            pip install -r requirements-dev.txt
+          else 
+            pip install -r requirements.txt;
+          fi
+
+      - name: Lint & Formatting (Ruff)
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Type Checking (Mypy)
+        run: |
+          mypy s3_builder.py --ignore-missing-imports
+
+      - name: Security Audit (pip-audit)
+        run: |
+          pip-audit
+
+      - name: Run Tests with Pytest & Coverage
+        env:
+          AWS_DEFAULT_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_ENDPOINT_URL: http://localhost:4566
+        run: |
+          pytest -v --cov=s3_builder --cov-report=term-missing --cov-fail-under=85
+          
