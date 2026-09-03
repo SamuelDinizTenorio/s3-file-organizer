@@ -1,6 +1,8 @@
-import pytest
 from unittest.mock import patch, MagicMock
+
+import pytest
 from botocore.exceptions import ClientError
+
 from s3_builder import S3Builder
 
 

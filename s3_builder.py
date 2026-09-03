@@ -1,7 +1,8 @@
 import logging
+
 import boto3
-from mypy_boto3_s3 import S3Client
 from botocore.exceptions import ClientError
+from mypy_boto3_s3 import S3Client
 
 logger = logging.getLogger('main')
 

@@ -1,6 +1,8 @@
-import os
-from dotenv import load_dotenv
 import logging
+import os
+
+from dotenv import load_dotenv
+
 from s3_builder import S3Builder
 
 load_dotenv()
@@ -21,6 +23,7 @@ def main():
         secret_access_key=AWS_SECRET_ACCESS_KEY,
         region=AWS_REGION
     )
+    logger.info("S3Builder initialized successfully: %s", s3_builder)
 
 if __name__ == '__main__':
     main()
