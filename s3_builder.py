@@ -31,3 +31,19 @@ class S3Builder:
         except Exception as ex:
             logger.warning("Unexpected error while initializing S3Builder: %s", ex)
             raise
+
+    def create_bucket(self, bucket_name: str) -> bool:
+        """Create an S3 bucket."""
+        try:
+            self.s3.create_bucket(Bucket=bucket_name)
+            logger.info("The bucket %s created with sucessfull", bucket_name)
+            return True
+        except ClientError as ex:
+            error_code = ex.response["Error"]["Code"]
+            if error_code == "BucketAlreadyOwnedByYou":
+                logger.warning(
+                    "The bucket %s already Owned By You: %s", bucket_name, ex
+                )
+                return True
+            logger.warning("An unexpected error while create the bucket: %s", ex)
+            raise

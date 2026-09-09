@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -55,16 +56,79 @@ class TestInit:
         mock_boto_client.assert_called_once_with(**expected_args)
 
     def test_s3_builder_init_client_error(self, mock_boto_client: MagicMock):
-        error_response = {"Error": {"Code": "500", "Message": "Error"}}
+        # Arrange
+        error_response: Any = {
+            "Error": {
+                "Code": "AccessDenied",
+                "Message": "Access Denied",
+            }
+        }
         mock_boto_client.side_effect = ClientError(
             error_response=error_response, operation_name="CreateClient"
         )
 
+        # Act & Assert
         with pytest.raises(ClientError):
             S3Builder()
 
     def test_s3_builder_init_generic_exception(self, mock_boto_client: MagicMock):
+        # Arrange
         mock_boto_client.side_effect = Exception("Generic error")
 
+        # Act & Assert
         with pytest.raises(Exception, match="Generic error"):
             S3Builder()
+
+
+class TestCreateBucket:
+    """Group tests for S3Builder.create_bucket."""
+
+    def test_create_bucket_success(self, mock_boto_client: MagicMock):
+        # Arrange
+        builder = S3Builder()
+        mock_instance = mock_boto_client.return_value
+
+        # act
+        result = builder.create_bucket(bucket_name="my-bucket")
+
+        # assert
+        mock_instance.create_bucket.assert_called_once_with(Bucket="my-bucket")
+        assert result is True
+
+    def test_create_bucket_already_owned_you(self, mock_boto_client: MagicMock):
+        # Arrange
+        builder = S3Builder()
+        mock_instance = mock_boto_client.return_value
+        error_response: Any = {
+            "Error": {
+                "Code": "BucketAlreadyOwnedByYou",
+                "Message": "Bucket Already Owned By You",
+            }
+        }
+        mock_instance.create_bucket.side_effect = ClientError(
+            error_response=error_response, operation_name="CreateBucket"
+        )
+
+        # Act
+        result = builder.create_bucket("my-bucket")
+
+        # act and assert
+        assert result is True
+
+    def test_create_bucket_raises_client_error(self, mock_boto_client: MagicMock):
+        # Arrange
+        builder = S3Builder()
+        mock_instance = mock_boto_client.return_value
+        error_response: Any = {
+            "Error": {
+                "Code": "AccessDenied",
+                "Message": "Access Denied",
+            }
+        }
+        mock_instance.create_bucket.side_effect = ClientError(
+            error_response=error_response, operation_name="CreateBucket"
+        )
+
+        # Act & Assert
+        with pytest.raises(ClientError):
+            builder.create_bucket("my-bucket")
