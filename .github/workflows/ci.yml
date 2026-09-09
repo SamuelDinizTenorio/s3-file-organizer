@@ -51,12 +51,16 @@ jobs:
         run: |
           pip-audit
 
-      - name: Run Tests with Pytest & Coverage
+      - name: Run Unit Tests
+        run: |
+          pytest tests/unit --cov=s3_builder --cov-report=term-missing
+
+      - name: Run Integration Tests
         env:
           AWS_DEFAULT_REGION: us-east-1
           AWS_ACCESS_KEY_ID: test
           AWS_SECRET_ACCESS_KEY: test
           AWS_ENDPOINT_URL: http://localhost:4566
         run: |
-          pytest -v --cov=s3_builder --cov-report=term-missing --cov-fail-under=85
+          pytest tests/integration --cov=s3_builder --cov-append --cov-report=term-missing --cov-fail-under=85
           
