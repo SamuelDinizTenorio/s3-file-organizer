@@ -1,23 +1,33 @@
 repos:
+  # 🧹 Ruff (Remote Linter and Formatter)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # 🐍 Mypy (Remote type checking)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - "boto3-stubs[s3]==1.43.66"
+
+  # 🧪 Local executions (Pytest e pip-audit)
   - repo: local
     hooks:
       - id: run-pytest
         name: Run Unit Tests (pytest)
-        entry: pytest -m "not integration"
+        entry: pytest tests/unit
         language: system
         pass_filenames: false
         always_run: true
 
-      - id: ruff-lint
-        name: Run Ruff Linter
-        entry: ruff check .
-        language: system
-        pass_filenames: false
-        always_run: true
-
-      - id: ruff-format
-        name: Run Ruff Formatter
-        entry: ruff format --check .
+      - id: pip-audit
+        name: Run Security Audit (pip-audit)
+        entry: pip-audit
         language: system
         pass_filenames: false
         always_run: true
