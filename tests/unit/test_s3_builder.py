@@ -132,3 +132,41 @@ class TestCreateBucket:
         # Act & Assert
         with pytest.raises(ClientError):
             builder.create_bucket("my-bucket")
+
+
+class TestUploadFile:
+    """Group tests for S3Builder.upload_file."""
+
+    def test_upload_file_success(self, mock_boto_client: MagicMock):
+        # Arrange
+        builder = S3Builder()
+        mock_instance = mock_boto_client.return_value
+
+        # act
+        result = builder.upload_file(
+            filename="my-file", bucket="my-bucket", key="my-key"
+        )
+
+        # assert
+        mock_instance.upload_file.assert_called_once_with(
+            Filename="my-file", Bucket="my-bucket", Key="my-key"
+        )
+        assert result is True
+
+    def test_upload_file_client_error(self, mock_boto_client: MagicMock):
+        # Arrange
+        builder = S3Builder()
+        mock_instance = mock_boto_client.return_value
+        error_response: Any = {
+            "Error": {
+                "Code": "AccessDenied",
+                "Message": "Access Denied",
+            }
+        }
+        mock_instance.upload_file.side_effect = ClientError(
+            error_response=error_response, operation_name="UploadFile"
+        )
+
+        # Act & Assert
+        with pytest.raises(ClientError):
+            builder.upload_file(filename="my-file", bucket="my-bucket", key="my-key")

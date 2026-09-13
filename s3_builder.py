@@ -47,3 +47,25 @@ class S3Builder:
                 return True
             logger.warning("An unexpected error while create the bucket: %s", ex)
             raise
+
+    def upload_file(self, filename: str, bucket: str, key: str) -> bool:
+        """Upload a local file to an S3 bucket.
+
+        Args:
+            filename (str): Path to the local file to upload.
+            bucket (str): Name of the target S3 bucket.
+            key (str): S3 object key (path/filename in the bucket).
+
+        Returns:
+            bool: True if the file was uploaded successfully.
+
+        Raises:
+            ClientError: If an error occurs during interaction with S3 API.
+        """
+        try:
+            self.s3.upload_file(Filename=filename, Bucket=bucket, Key=key)
+            logger.info("Successfully uploaded %s to %s/%s", filename, bucket, key)
+            return True
+        except ClientError as ex:
+            logger.warning("An unexpected error while upload the file: %s", ex)
+            raise
