@@ -33,7 +33,17 @@ class S3Builder:
             raise
 
     def create_bucket(self, bucket_name: str) -> bool:
-        """Create an S3 bucket."""
+        """Create an S3 bucket.
+
+        Args:
+            bucket_name (str): Name of the target S3 bucket that will be created.
+
+        Returns:
+            bool: True if the bucket was created successfully.
+
+        Raises:
+            ClientError: If an error occurs during interaction with S3 API.
+        """
         try:
             self.s3.create_bucket(Bucket=bucket_name)
             logger.info("The bucket %s created with sucessfull", bucket_name)
