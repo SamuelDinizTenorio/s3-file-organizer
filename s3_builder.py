@@ -46,16 +46,18 @@ class S3Builder:
         """
         try:
             self.s3.create_bucket(Bucket=bucket_name)
-            logger.info("The bucket %s created with sucessfull", bucket_name)
+            logger.info("Successfully created bucket %s", bucket_name)
             return True
         except ClientError as ex:
             error_code = ex.response["Error"]["Code"]
             if error_code == "BucketAlreadyOwnedByYou":
-                logger.warning(
-                    "The bucket %s already Owned By You: %s", bucket_name, ex
-                )
+                logger.warning("Bucket %s is already owned by you: %s", bucket_name, ex)
                 return True
-            logger.warning("An unexpected error while create the bucket: %s", ex)
+            logger.warning(
+                "An unexpected error occurred while creating bucket %s: %s",
+                bucket_name,
+                ex,
+            )
             raise
 
     def upload_file(self, filename: str, bucket: str, key: str) -> bool:
