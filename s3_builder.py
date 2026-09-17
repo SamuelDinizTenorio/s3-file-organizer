@@ -17,6 +17,19 @@ class S3Builder:
         secret_access_key: str = "test",
         region: str = "us-east-1",
     ) -> None:
+        """Initialize the S3Builder client.
+
+        Args:
+            endpoint_url (str): Target URL for the S3 service
+                (e.g., LocalStack endpoint).
+            access_key_id (str): AWS access key ID.
+            secret_access_key (str): AWS secret access key.
+            region (str): AWS region name.
+
+        Raises:
+            ClientError: If an error occurs while creating the S3 client.
+            Exception: For any other unexpected errors during initialization.
+        """
         try:
             self.s3: S3Client = boto3.client(
                 service_name="s3",
