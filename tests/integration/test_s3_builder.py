@@ -1,3 +1,5 @@
+from typing import Generator
+
 import pytest
 from botocore.exceptions import ClientError
 
@@ -5,7 +7,7 @@ from s3_builder import S3Builder
 
 
 @pytest.fixture
-def s3_builder():
+def s3_builder() -> Generator[S3Builder, None, None]:
     # Setup
     builder_instance = S3Builder(
         endpoint_url="http://localhost:4566",
@@ -32,7 +34,7 @@ class TestCreateBucket:
         covered by unit tests using mocks.
     """
 
-    def test_create_bucket_success(self, s3_builder: S3Builder):
+    def test_create_bucket_success(self, s3_builder: S3Builder) -> None:
         # Arrange
         bucket_name = "my-bucket"
 
@@ -46,7 +48,7 @@ class TestCreateBucket:
         bucket_names = [bucket["Name"] for bucket in response.get("Buckets", [])]
         assert bucket_name in bucket_names
 
-    def test_create_bucket_already_owned_by_you(self, s3_builder: S3Builder):
+    def test_create_bucket_already_owned_by_you(self, s3_builder: S3Builder) -> None:
         # Arrange
         bucket_name = "meu-bucket-de-teste"
 
@@ -62,9 +64,11 @@ class TestCreateBucket:
         assert bucket_name in bucket_names
         assert bucket_names.count(bucket_name) == 1
 
-    def test_create_bucket_invalid_name(self, s3_builder: S3Builder):
+    def test_create_bucket_invalid_name(self, s3_builder: S3Builder) -> None:
+        # Arrange
         invalid_name = "My_Bucket"
 
+        # Act & Assert
         with pytest.raises(ClientError) as exc_info:
             s3_builder.create_bucket(bucket_name=invalid_name)
 
