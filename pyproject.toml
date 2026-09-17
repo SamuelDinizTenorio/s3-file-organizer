@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "s3-builder"
+version = "0.1.0"
+description = "Builder utility for provisioning AWS S3."
+requires-python = ">=3.10"
+
+# Ruff Configuration (Linter and Formatter)
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"] # Linter rules (pycodestyle, pyflakes, isort)
+
+# Pytest Configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["."]
+markers = [
+    "integration: marks integration tests that depend on LocalStack",
+]
+
+# Mypy Configuration
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
