@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,7 +8,7 @@ from s3_builder import S3Builder
 
 
 @pytest.fixture
-def mock_boto_client():
+def mock_boto_client() -> Generator[MagicMock, None, None]:
     """Fixture to mock boto3.client for S3Builder initialization."""
     with patch("s3_builder.boto3.client") as mock_client:
         mock_instance = MagicMock()
@@ -50,12 +50,15 @@ class TestInit:
         ],
     )
     def test_s3_builder_init_success(
-        self, mock_boto_client: MagicMock, kwargs: dict, expected_args: dict
-    ):
+        self,
+        mock_boto_client: MagicMock,
+        kwargs: dict[str, Any],
+        expected_args: dict[str, Any],
+    ) -> None:
         S3Builder(**kwargs)
         mock_boto_client.assert_called_once_with(**expected_args)
 
-    def test_s3_builder_init_client_error(self, mock_boto_client: MagicMock):
+    def test_s3_builder_init_client_error(self, mock_boto_client: MagicMock) -> None:
         # Arrange
         error_response: Any = {
             "Error": {
@@ -71,7 +74,9 @@ class TestInit:
         with pytest.raises(ClientError):
             S3Builder()
 
-    def test_s3_builder_init_generic_exception(self, mock_boto_client: MagicMock):
+    def test_s3_builder_init_generic_exception(
+        self, mock_boto_client: MagicMock
+    ) -> None:
         # Arrange
         mock_boto_client.side_effect = Exception("Generic error")
 
@@ -83,19 +88,19 @@ class TestInit:
 class TestCreateBucket:
     """Group tests for S3Builder.create_bucket."""
 
-    def test_create_bucket_success(self, mock_boto_client: MagicMock):
+    def test_create_bucket_success(self, mock_boto_client: MagicMock) -> None:
         # Arrange
         builder = S3Builder()
         mock_instance = mock_boto_client.return_value
 
-        # act
+        # Act
         result = builder.create_bucket(bucket_name="my-bucket")
 
-        # assert
+        # Assert
         mock_instance.create_bucket.assert_called_once_with(Bucket="my-bucket")
         assert result is True
 
-    def test_create_bucket_already_owned_you(self, mock_boto_client: MagicMock):
+    def test_create_bucket_already_owned_you(self, mock_boto_client: MagicMock) -> None:
         # Arrange
         builder = S3Builder()
         mock_instance = mock_boto_client.return_value
@@ -112,10 +117,12 @@ class TestCreateBucket:
         # Act
         result = builder.create_bucket("my-bucket")
 
-        # act and assert
+        # Assert
         assert result is True
 
-    def test_create_bucket_raises_client_error(self, mock_boto_client: MagicMock):
+    def test_create_bucket_raises_client_error(
+        self, mock_boto_client: MagicMock
+    ) -> None:
         # Arrange
         builder = S3Builder()
         mock_instance = mock_boto_client.return_value
@@ -137,23 +144,23 @@ class TestCreateBucket:
 class TestUploadFile:
     """Group tests for S3Builder.upload_file."""
 
-    def test_upload_file_success(self, mock_boto_client: MagicMock):
+    def test_upload_file_success(self, mock_boto_client: MagicMock) -> None:
         # Arrange
         builder = S3Builder()
         mock_instance = mock_boto_client.return_value
 
-        # act
+        # Act
         result = builder.upload_file(
             filename="my-file", bucket="my-bucket", key="my-key"
         )
 
-        # assert
+        # Assert
         mock_instance.upload_file.assert_called_once_with(
             Filename="my-file", Bucket="my-bucket", Key="my-key"
         )
         assert result is True
 
-    def test_upload_file_client_error(self, mock_boto_client: MagicMock):
+    def test_upload_file_client_error(self, mock_boto_client: MagicMock) -> None:
         # Arrange
         builder = S3Builder()
         mock_instance = mock_boto_client.return_value
