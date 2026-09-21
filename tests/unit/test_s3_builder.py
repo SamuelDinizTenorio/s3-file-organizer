@@ -1,4 +1,4 @@
-from typing import Any, Generator
+from typing import Any, Generator, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -14,6 +14,11 @@ def mock_boto_client() -> Generator[MagicMock, None, None]:
         mock_instance = MagicMock()
         mock_client.return_value = mock_instance
         yield mock_client
+
+
+@pytest.fixture
+def s3_builder(mock_boto_client: MagicMock) -> S3Builder:
+    return S3Builder()
 
 
 class TestInit:
@@ -88,92 +93,92 @@ class TestInit:
 class TestCreateBucket:
     """Group tests for S3Builder.create_bucket."""
 
-    def test_create_bucket_success(self, mock_boto_client: MagicMock) -> None:
+    def test_create_bucket_success(self, s3_builder: S3Builder) -> None:
         # Arrange
-        builder = S3Builder()
-        mock_instance = mock_boto_client.return_value
+        bucket_name: str = "my-bucket"
+        mock_s3 = cast(MagicMock, s3_builder.s3)
 
         # Act
-        result = builder.create_bucket(bucket_name="my-bucket")
+        result = s3_builder.create_bucket(bucket_name=bucket_name)
 
         # Assert
-        mock_instance.create_bucket.assert_called_once_with(Bucket="my-bucket")
+        mock_s3.create_bucket.assert_called_once_with(Bucket=bucket_name)
         assert result is True
 
-    def test_create_bucket_already_owned_you(self, mock_boto_client: MagicMock) -> None:
+    def test_create_bucket_already_owned_you(self, s3_builder: S3Builder) -> None:
         # Arrange
-        builder = S3Builder()
-        mock_instance = mock_boto_client.return_value
+        bucket_name: str = "my-bucket"
+        mock_s3 = cast(MagicMock, s3_builder.s3)
         error_response: Any = {
             "Error": {
                 "Code": "BucketAlreadyOwnedByYou",
                 "Message": "Bucket Already Owned By You",
             }
         }
-        mock_instance.create_bucket.side_effect = ClientError(
+        mock_s3.create_bucket.side_effect = ClientError(
             error_response=error_response, operation_name="CreateBucket"
         )
 
         # Act
-        result = builder.create_bucket("my-bucket")
+        result = s3_builder.create_bucket(bucket_name=bucket_name)
 
         # Assert
         assert result is True
 
-    def test_create_bucket_raises_client_error(
-        self, mock_boto_client: MagicMock
-    ) -> None:
+    def test_create_bucket_raises_client_error(self, s3_builder: S3Builder) -> None:
         # Arrange
-        builder = S3Builder()
-        mock_instance = mock_boto_client.return_value
+        bucket_name: str = "my-bucket"
+        mock_s3 = cast(MagicMock, s3_builder.s3)
         error_response: Any = {
             "Error": {
                 "Code": "AccessDenied",
                 "Message": "Access Denied",
             }
         }
-        mock_instance.create_bucket.side_effect = ClientError(
+        mock_s3.create_bucket.side_effect = ClientError(
             error_response=error_response, operation_name="CreateBucket"
         )
 
         # Act & Assert
         with pytest.raises(ClientError):
-            builder.create_bucket("my-bucket")
+            s3_builder.create_bucket(bucket_name=bucket_name)
 
 
 class TestUploadFile:
     """Group tests for S3Builder.upload_file."""
 
-    def test_upload_file_success(self, mock_boto_client: MagicMock) -> None:
+    def test_upload_file_success(self, s3_builder: S3Builder) -> None:
         # Arrange
-        builder = S3Builder()
-        mock_instance = mock_boto_client.return_value
+        filename: str = "my-file"
+        bucket: str = "my-bucket"
+        key: str = "my-key"
+        mock_s3 = cast(MagicMock, s3_builder.s3)
 
         # Act
-        result = builder.upload_file(
-            filename="my-file", bucket="my-bucket", key="my-key"
-        )
+        result = s3_builder.upload_file(filename=filename, bucket=bucket, key=key)
 
         # Assert
-        mock_instance.upload_file.assert_called_once_with(
-            Filename="my-file", Bucket="my-bucket", Key="my-key"
+        mock_s3.upload_file.assert_called_once_with(
+            Filename=filename, Bucket=bucket, Key=key
         )
         assert result is True
 
-    def test_upload_file_client_error(self, mock_boto_client: MagicMock) -> None:
+    def test_upload_file_client_error(self, s3_builder: S3Builder) -> None:
         # Arrange
-        builder = S3Builder()
-        mock_instance = mock_boto_client.return_value
+        filename: str = "my-file"
+        bucket: str = "my-bucket"
+        key: str = "my-key"
+        mock_s3 = cast(MagicMock, s3_builder.s3)
         error_response: Any = {
             "Error": {
                 "Code": "AccessDenied",
                 "Message": "Access Denied",
             }
         }
-        mock_instance.upload_file.side_effect = ClientError(
+        mock_s3.upload_file.side_effect = ClientError(
             error_response=error_response, operation_name="UploadFile"
         )
 
         # Act & Assert
         with pytest.raises(ClientError):
-            builder.upload_file(filename="my-file", bucket="my-bucket", key="my-key")
+            s3_builder.upload_file(filename=filename, bucket=bucket, key=key)
