@@ -22,7 +22,13 @@ def s3_builder() -> Generator[S3Builder, None, None]:
 
     # Teardown
     for bucket in response.get("Buckets", []):
-        builder_instance.s3.delete_bucket(Bucket=bucket["Name"])
+        s3 = builder_instance.s3
+        objects = s3.list_objects_v2(Bucket=bucket["Name"])
+
+        for obj in objects.get("Contents", []):
+            s3.delete_object(Bucket=bucket["Name"], Key=obj["Key"])
+
+        s3.delete_bucket(Bucket=bucket["Name"])
 
 
 class TestCreateBucket:
