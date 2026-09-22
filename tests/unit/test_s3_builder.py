@@ -2,6 +2,7 @@ from typing import Any, Generator, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
+from boto3.exceptions import S3UploadFailedError
 from botocore.exceptions import ClientError
 
 from s3_builder import S3Builder
@@ -181,4 +182,17 @@ class TestUploadFile:
 
         # Act & Assert
         with pytest.raises(ClientError):
+            s3_builder.upload_file(filename=filename, bucket=bucket, key=key)
+
+    def test_upload_file_bucket_not_found(self, s3_builder: S3Builder) -> None:
+        # Arrange
+        filename: str = "my-file"
+        bucket: str = "my-bucket"
+        key: str = "my-key"
+
+        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_s3.upload_file.side_effect = S3UploadFailedError()
+
+        # Act & Assert
+        with pytest.raises(S3UploadFailedError):
             s3_builder.upload_file(filename=filename, bucket=bucket, key=key)

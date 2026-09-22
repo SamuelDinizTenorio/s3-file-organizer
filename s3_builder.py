@@ -1,6 +1,7 @@
 import logging
 
 import boto3
+from boto3.exceptions import S3UploadFailedError
 from botocore.exceptions import ClientError
 from mypy_boto3_s3 import S3Client
 
@@ -91,6 +92,6 @@ class S3Builder:
             self.s3.upload_file(Filename=filename, Bucket=bucket, Key=key)
             logger.info("Successfully uploaded %s to %s/%s", filename, bucket, key)
             return True
-        except ClientError as ex:
+        except (ClientError, S3UploadFailedError) as ex:
             logger.warning("An unexpected error while upload the file: %s", ex)
             raise
