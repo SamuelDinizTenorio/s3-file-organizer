@@ -69,7 +69,7 @@ class S3Builder:
                 logger.warning("Bucket %s is already owned by you: %s", bucket_name, ex)
                 return True
             logger.warning(
-                "An unexpected error occurred while creating bucket %s: %s",
+                "Failed to create bucket %s due to S3 API error: %s",
                 bucket_name,
                 ex,
             )
