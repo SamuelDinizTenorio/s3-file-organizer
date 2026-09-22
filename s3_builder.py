@@ -5,7 +5,7 @@ from boto3.exceptions import S3UploadFailedError
 from botocore.exceptions import ClientError
 from mypy_boto3_s3 import S3Client
 
-logger = logging.getLogger("main")
+logger = logging.getLogger(__name__)
 
 
 class S3Builder:
@@ -40,10 +40,10 @@ class S3Builder:
                 region_name=region,
             )
         except ClientError as ex:
-            logger.warning("Failed in create S3 client: %s", ex)
+            logger.exception("Failed in create S3 client: %s", ex)
             raise
         except Exception as ex:
-            logger.warning("Unexpected error while initializing S3Builder: %s", ex)
+            logger.exception("Unexpected error while initializing S3Builder: %s", ex)
             raise
 
     def create_bucket(self, bucket_name: str) -> bool:
@@ -68,14 +68,14 @@ class S3Builder:
             if error_code == "BucketAlreadyOwnedByYou":
                 logger.warning("Bucket %s is already owned by you: %s", bucket_name, ex)
                 return True
-            logger.warning(
+            logger.exception(
                 "Failed to create bucket %s due to S3 API error: %s",
                 bucket_name,
                 ex,
             )
             raise
         except Exception as ex:
-            logger.warning(
+            logger.exception(
                 "An unexpected error occurred while creating bucket %s: %s",
                 bucket_name,
                 ex,
@@ -104,7 +104,7 @@ class S3Builder:
             logger.info("Successfully uploaded %s to %s/%s", filename, bucket, key)
             return True
         except (ClientError, S3UploadFailedError) as ex:
-            logger.warning(
+            logger.exception(
                 "Failed to upload the file %s to %s/%s due to S3 API error: %s",
                 filename,
                 bucket,
@@ -113,10 +113,10 @@ class S3Builder:
             )
             raise
         except FileNotFoundError:
-            logger.warning("Local file not found: %s", filename)
+            logger.exception("Local file not found: %s", filename)
             raise
         except Exception as ex:
-            logger.warning(
+            logger.exception(
                 "An unexpected error occurred while uploading file %s to %s/%s: %s",
                 filename,
                 bucket,

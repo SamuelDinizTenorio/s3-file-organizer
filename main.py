@@ -14,7 +14,7 @@ AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 
 """Basic log configuration"""
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
