@@ -95,6 +95,8 @@ class S3Builder:
 
         Raises:
             ClientError: If an error occurs during interaction with S3 API.
+            S3UploadFailedError: If the upload operation fails.
+            FileNotFoundError: If the local file is not found.
             Exception: If an unexpected error occurs while uploading file.
         """
         try:
