@@ -209,3 +209,16 @@ class TestUploadFile:
         # Act & Assert
         with pytest.raises(FileNotFoundError):
             s3_builder.upload_file(filename=filename, bucket=bucket, key=key)
+
+    def test_upload_file_exception(self, s3_builder: S3Builder) -> None:
+        # Arrange
+        filename: str = "my-file"
+        bucket: str = "my-bucket"
+        key: str = "my-key"
+
+        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_s3.upload_file.side_effect = Exception()
+
+        # Act & Assert
+        with pytest.raises(Exception):
+            s3_builder.upload_file(filename=filename, bucket=bucket, key=key)

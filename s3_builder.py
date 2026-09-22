@@ -87,6 +87,7 @@ class S3Builder:
 
         Raises:
             ClientError: If an error occurs during interaction with S3 API.
+            Exception: If an unexpected error occurs while uploading file.
         """
         try:
             self.s3.upload_file(Filename=filename, Bucket=bucket, Key=key)
@@ -97,4 +98,13 @@ class S3Builder:
             raise
         except FileNotFoundError:
             logger.warning("Local file not found: %s", filename)
+            raise
+        except Exception as ex:
+            logger.warning(
+                "An unexpected error occurred while uploading file %s to %s/%s: %s",
+                filename,
+                bucket,
+                key,
+                ex,
+            )
             raise
