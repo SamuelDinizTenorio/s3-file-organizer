@@ -95,3 +95,6 @@ class S3Builder:
         except (ClientError, S3UploadFailedError) as ex:
             logger.warning("An unexpected error while upload the file: %s", ex)
             raise
+        except FileNotFoundError:
+            logger.warning("Local file not found: %s", filename)
+            raise
