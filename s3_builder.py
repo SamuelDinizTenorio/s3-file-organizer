@@ -104,7 +104,13 @@ class S3Builder:
             logger.info("Successfully uploaded %s to %s/%s", filename, bucket, key)
             return True
         except (ClientError, S3UploadFailedError) as ex:
-            logger.warning("An unexpected error while upload the file: %s", ex)
+            logger.warning(
+                "Failed to upload the file %s to %s/%s due to S3 API error: %s",
+                filename,
+                bucket,
+                key,
+                ex,
+            )
             raise
         except FileNotFoundError:
             logger.warning("Local file not found: %s", filename)
