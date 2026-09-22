@@ -144,6 +144,17 @@ class TestCreateBucket:
         with pytest.raises(ClientError):
             s3_builder.create_bucket(bucket_name=bucket_name)
 
+    def test_create_bucket_generic_exception(self, s3_builder: S3Builder) -> None:
+        # Arrange
+        bucket_name: str = "my-bucket"
+
+        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_s3.create_bucket.side_effect = Exception()
+
+        # Act & Assert
+        with pytest.raises(Exception):
+            s3_builder.create_bucket(bucket_name=bucket_name)
+
 
 class TestUploadFile:
     """Group tests for S3Builder.upload_file."""

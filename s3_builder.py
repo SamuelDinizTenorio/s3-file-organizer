@@ -57,6 +57,7 @@ class S3Builder:
 
         Raises:
             ClientError: If an error occurs during interaction with S3 API.
+            Exception: If an unexpected error occurs while creating the bucket.
         """
         try:
             self.s3.create_bucket(Bucket=bucket_name)
@@ -67,6 +68,13 @@ class S3Builder:
             if error_code == "BucketAlreadyOwnedByYou":
                 logger.warning("Bucket %s is already owned by you: %s", bucket_name, ex)
                 return True
+            logger.warning(
+                "An unexpected error occurred while creating bucket %s: %s",
+                bucket_name,
+                ex,
+            )
+            raise
+        except Exception as ex:
             logger.warning(
                 "An unexpected error occurred while creating bucket %s: %s",
                 bucket_name,
