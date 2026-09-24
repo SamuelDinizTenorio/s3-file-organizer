@@ -34,13 +34,7 @@ def s3_builder() -> Generator[S3Builder, None, None]:
 
 
 class TestCreateBucket:
-    """Group tests for S3Builder.create_bucket
-
-    Architecture Note:
-        The case 'BucketAlreadyExists' (when another AWS account owns the bucket)
-        it is not validated with LocalStack (Community). This case validation is
-        covered by unit tests using mocks.
-    """
+    """Group integration tests for S3Builder.create_bucket."""
 
     def test_create_bucket_success(self, s3_builder: S3Builder) -> None:
         # Arrange
@@ -72,35 +66,60 @@ class TestCreateBucket:
         assert bucket_name in bucket_names
         assert bucket_names.count(bucket_name) == 1
 
-    def test_create_bucket_invalid_name(self, s3_builder: S3Builder) -> None:
-        # Arrange
-        invalid_name = "My_Bucket"
-
+    @pytest.mark.parametrize(
+        "invalid_name",
+        [
+            "My_Bucket",  # Contains uppercase letters (must be lowercase)
+            "my_bucket_underscore",  # Contains underscores
+            "my..bucket",  # Contains consecutive periods
+            "ab",  # Less than 3 characters long
+            "-mybucket",  # Starts with a hyphen
+        ],
+    )
+    def test_create_bucket_invalid_names(
+        self, s3_builder: S3Builder, invalid_name: str
+    ) -> None:
         # Act & Assert
         with pytest.raises(ClientError) as exc_info:
             s3_builder.create_bucket(bucket_name=invalid_name)
 
-        assert exc_info.value.response["Error"]["Code"] == "InvalidBucketName"
+        assert exc_info.value.response["Error"]["Code"] in (
+            "InvalidBucketName",
+            "InvalidBucketNameException",
+        )
 
 
 class TestUploadFile:
-    """Group tests for S3Builder.upload_file."""
+    """Group integration tests for S3Builder.upload_file."""
 
-    def test_upload_file_success(self, s3_builder: S3Builder, tmp_path: Path) -> None:
-        # Arrange: Create the bucket and a local temporary file.
+    @pytest.mark.parametrize(
+        "key, content",
+        [
+            ("test_file.txt", "Hello, LocalStack!"),
+            ("documents/2026/report.pdf", "PDF Content Stream"),
+            ("folder/subfolder/file with spaces.txt", "Content with spaces"),
+        ],
+    )
+    def test_upload_file_success_variations(
+        self,
+        s3_builder: S3Builder,
+        tmp_path: Path,
+        key: str,
+        content: str,
+    ) -> None:
+        # Arrange
         bucket_name: str = "upload-bucket-test"
-        key: str = "test_file.txt"
         s3_builder.create_bucket(bucket_name)
 
-        file_path = tmp_path / "test_file.txt"
-        file_path.write_text("Hello, LocalStack!")
+        file_path = tmp_path / "temp_file.txt"
+        file_path.write_text(content)
 
-        # Act: Upload the file
+        # Act
         result = s3_builder.upload_file(
             filename=str(file_path), bucket=bucket_name, key=key
         )
 
-        # Assert: Validate the `True` return value and confirm with `head_object`
+        # Assert
         assert result is True
 
         obj = s3_builder.s3.head_object(Bucket=bucket_name, Key=key)
@@ -110,7 +129,7 @@ class TestUploadFile:
         self, s3_builder: S3Builder, tmp_path: Path
     ) -> None:
         # Arrange
-        bucket_name: str = "upload-bucket-test"
+        bucket_name: str = "non-existent-bucket"
         key: str = "test_file.txt"
         file_path = tmp_path / "test_file.txt"
         file_path.write_text("Hello, LocalStack!")
@@ -123,7 +142,7 @@ class TestUploadFile:
 
     def test_upload_file_file_not_found(self, s3_builder: S3Builder) -> None:
         # Arrange
-        file_path: str = "test_file.txt"
+        file_path: str = "non_existent_local_file.txt"
         bucket_name: str = "upload-bucket-test"
         key: str = "test_file.txt"
 
