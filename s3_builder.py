@@ -4,6 +4,7 @@ import boto3
 from boto3.exceptions import S3UploadFailedError
 from botocore.exceptions import ClientError
 from mypy_boto3_s3 import S3Client
+from mypy_boto3_s3.type_defs import ObjectTypeDef
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +122,50 @@ class S3Builder:
                 filename,
                 bucket,
                 key,
+                ex,
+            )
+            raise
+
+    def list_objects(self, bucket: str, prefix: str = "") -> list[ObjectTypeDef]:
+        """List objects in an S3 bucket with an optional prefix.
+
+        Args:
+            bucket (str): Name of the S3 bucket.
+            prefix (str, optional): Key prefix to filter objects. Defaults to "".
+
+        Returns:
+            list[dict[str, Any]]: List of dictionary metadata representing S3 objects.
+
+        Raises:
+            ClientError: If an error occurs during interaction with S3 API.
+            Exception: If an unexpected error occurs while listing objects.
+        """
+        try:
+            paginator = self.s3.get_paginator("list_objects_v2")
+            objects: list[ObjectTypeDef] = []
+
+            for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+                if "Contents" in page:
+                    objects.extend(page["Contents"])
+
+            logger.info(
+                "Successfully listed %d object(s) in bucket '%s' with prefix '%s'",
+                len(objects),
+                bucket,
+                prefix,
+            )
+            return objects
+        except ClientError as ex:
+            logger.exception(
+                "Failed to list objects in bucket %s due to S3 API error: %s",
+                bucket,
+                ex,
+            )
+            raise
+        except Exception as ex:
+            logger.exception(
+                "An unexpected error occurred while listing objects in bucket %s: %s",
+                bucket,
                 ex,
             )
             raise

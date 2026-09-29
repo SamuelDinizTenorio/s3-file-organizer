@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from boto3.exceptions import S3UploadFailedError
 from botocore.exceptions import ClientError
+from mypy_boto3_s3.type_defs import ObjectTypeDef
 
 from s3_builder import S3Builder
 
@@ -345,4 +346,154 @@ class TestUploadFile:
         mock_s3.upload_file.assert_called_once_with(
             Filename=filename, Bucket=bucket, Key=key
         )
+        assert expected_log in caplog.record_tuples
+
+
+class TestListObjects:
+    """Group unit tests for S3Builder.list_objects."""
+
+    @pytest.mark.parametrize(
+        "bucket, prefix, paginator_pages, expected_keys, expected_log_msg",
+        [
+            # Case 1: Bucket with multiple objects using default prefix (None)
+            (
+                "my-bucket",
+                None,
+                [
+                    {
+                        "Contents": [
+                            cast(ObjectTypeDef, {"Key": "file1.txt"}),
+                            cast(ObjectTypeDef, {"Key": "file2.pdf"}),
+                        ]
+                    },
+                    {
+                        "Contents": [
+                            cast(ObjectTypeDef, {"Key": "file3.png"}),
+                        ]
+                    },
+                ],
+                ["file1.txt", "file2.pdf", "file3.png"],
+                "Successfully listed 3 object(s) in bucket 'my-bucket' with prefix ''",
+            ),
+            # Case 2: Filtering by a specific key prefix
+            (
+                "my-bucket",
+                "documents/",
+                [
+                    {
+                        "Contents": [
+                            cast(ObjectTypeDef, {"Key": "documents/report.pdf"}),
+                        ]
+                    },
+                ],
+                ["documents/report.pdf"],
+                "Successfully listed 1 object(s) in bucket "
+                "'my-bucket' with prefix 'documents/'",
+            ),
+            # Case 3: Empty bucket (missing 'Contents' key in API response)
+            (
+                "empty-bucket",
+                None,
+                [{}],
+                [],
+                "Successfully listed 0 object(s) in bucket "
+                "'empty-bucket' with prefix ''",
+            ),
+        ],
+    )
+    def test_list_objects_success(
+        self,
+        s3_builder: S3Builder,
+        caplog: pytest.LogCaptureFixture,
+        bucket: str,
+        prefix: str,
+        paginator_pages: ObjectTypeDef,
+        expected_keys: list[str],
+        expected_log_msg: str,
+    ) -> None:
+        """Test successful execution of list_objects across various scenarios."""
+        # Arrange
+        caplog.set_level(logging.INFO)
+        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_paginator = MagicMock()
+        mock_s3.get_paginator.return_value = mock_paginator
+        mock_paginator.paginate.return_value = paginator_pages
+
+        expected_log: tuple[str, int, str] = (
+            "s3_builder",
+            logging.INFO,
+            expected_log_msg,
+        )
+
+        # Act
+        kwargs = {"bucket": bucket}
+        if prefix is not None:
+            kwargs["prefix"] = prefix
+
+        result = s3_builder.list_objects(**kwargs)
+
+        # Assert
+        mock_s3.get_paginator.assert_called_once_with("list_objects_v2")
+        mock_paginator.paginate.assert_called_once_with(
+            Bucket=bucket, Prefix=prefix or ""
+        )
+        assert [obj["Key"] for obj in result] == expected_keys
+        assert expected_log in caplog.record_tuples
+
+    @pytest.mark.parametrize(
+        "exception_instance, match_pattern, expected_log_msg",
+        [
+            # Case 1: AWS API ClientError (e.g., target bucket does not exist)
+            (
+                ClientError(
+                    {
+                        "Error": {
+                            "Code": "NoSuchBucket",
+                            "Message": "The specified bucket does not exist",
+                        }
+                    },
+                    "ListObjectsV2",
+                ),
+                "The specified bucket does not exist",
+                "Failed to list objects in bucket my-bucket due to S3 API error: "
+                "An error occurred (NoSuchBucket) when calling the ListObjectsV2 "
+                "operation: The specified bucket does not exist",
+            ),
+            # Case 2: Unexpected generic exception during paginator iteration
+            (
+                Exception("Unexpected paginator failure"),
+                "Unexpected paginator failure",
+                "An unexpected error occurred while listing objects "
+                "in bucket my-bucket: Unexpected paginator failure",
+            ),
+        ],
+    )
+    def test_list_objects_errors(
+        self,
+        s3_builder: S3Builder,
+        caplog: pytest.LogCaptureFixture,
+        exception_instance: Exception,
+        match_pattern: str,
+        expected_log_msg: str,
+    ) -> None:
+        """Test exception handling and logging behavior for list_objects failures."""
+        # Arrange
+        bucket: str = "my-bucket"
+        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_paginator = MagicMock()
+        mock_s3.get_paginator.return_value = mock_paginator
+        mock_paginator.paginate.side_effect = exception_instance
+
+        expected_log: tuple[str, int, str] = (
+            "s3_builder",
+            logging.ERROR,
+            expected_log_msg,
+        )
+
+        # Act & Assert
+        with pytest.raises(type(exception_instance), match=match_pattern):
+            s3_builder.list_objects(bucket=bucket)
+
+        mock_s3.get_paginator.assert_called_once_with("list_objects_v2")
+        mock_paginator.paginate.assert_called_once_with(Bucket=bucket, Prefix="")
         assert expected_log in caplog.record_tuples
