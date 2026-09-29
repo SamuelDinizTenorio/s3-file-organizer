@@ -225,3 +225,42 @@ class S3Builder:
                 ex,
             )
             raise
+
+    def delete_object(self, bucket: str, key: str) -> bool:
+        """Delete an object from an S3 bucket.
+
+        Args:
+            bucket (str): Name of the S3 bucket.
+            key (str): S3 object key to delete.
+
+        Returns:
+            bool: True if the object was deleted successfully.
+
+        Raises:
+            ClientError: If an error occurs during interaction with S3 API.
+            Exception: If an unexpected error occurs while deleting the object.
+        """
+        try:
+            self.s3.delete_object(Bucket=bucket, Key=key)
+            logger.info(
+                "The object %s/%s was successfully deleted",
+                bucket,
+                key,
+            )
+            return True
+        except ClientError as ex:
+            logger.exception(
+                "Failed to delete object %s/%s due to S3 API error: %s",
+                bucket,
+                key,
+                ex,
+            )
+            raise
+        except Exception as ex:
+            logger.exception(
+                "An unexpected error occurred while deleting the object %s/%s: %s",
+                bucket,
+                key,
+                ex,
+            )
+            raise

@@ -616,3 +616,100 @@ class TestCopyObject:
             Key=dest_key,
         )
         assert expected_log in caplog.record_tuples
+
+
+class TestDeleteObject:
+    """Group unit tests for S3Builder.delete_object."""
+
+    @pytest.mark.parametrize(
+        "bucket, key",
+        [
+            ("my-bucket", "file.txt"),
+            ("my-bucket", "documents/report.pdf"),
+            ("archive-bucket", "2026/logs/app.log"),
+        ],
+    )
+    def test_delete_object_success(
+        self,
+        s3_builder: S3Builder,
+        caplog: pytest.LogCaptureFixture,
+        bucket: str,
+        key: str,
+    ) -> None:
+        """Test successful execution of delete_object across various bucket
+        and key variations.
+        """
+        # Arrange
+        caplog.set_level(logging.INFO)
+        mock_s3 = cast(MagicMock, s3_builder.s3)
+
+        expected_log: tuple[str, int, str] = (
+            "s3_builder",
+            logging.INFO,
+            f"The object {bucket}/{key} was successfully deleted",
+        )
+
+        # Act
+        result = s3_builder.delete_object(bucket=bucket, key=key)
+
+        # Assert
+        mock_s3.delete_object.assert_called_once_with(Bucket=bucket, Key=key)
+        assert result is True
+        assert expected_log in caplog.record_tuples
+
+    @pytest.mark.parametrize(
+        "exception_instance, match_pattern, expected_log_msg",
+        [
+            # Case 1: AWS API ClientError (e.g., AccessDenied or internal S3 error)
+            (
+                ClientError(
+                    {
+                        "Error": {
+                            "Code": "AccessDenied",
+                            "Message": "Access Denied",
+                        }
+                    },
+                    "DeleteObject",
+                ),
+                "Access Denied",
+                "Failed to delete object my-bucket/my-key due to S3 API error: "
+                "An error occurred (AccessDenied) when calling the "
+                "DeleteObject operation: Access Denied",
+            ),
+            # Case 2: Unexpected generic exception during deletion
+            (
+                Exception("Unexpected deletion error"),
+                "Unexpected deletion error",
+                "An unexpected error occurred while deleting the object "
+                "my-bucket/my-key: Unexpected deletion error",
+            ),
+        ],
+    )
+    def test_delete_object_errors(
+        self,
+        s3_builder: S3Builder,
+        caplog: pytest.LogCaptureFixture,
+        exception_instance: Exception,
+        match_pattern: str,
+        expected_log_msg: str,
+    ) -> None:
+        """Test exception handling and logging behavior for delete_object failures."""
+        # Arrange
+        bucket = "my-bucket"
+        key = "my-key"
+
+        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_s3.delete_object.side_effect = exception_instance
+
+        expected_log: tuple[str, int, str] = (
+            "s3_builder",
+            logging.ERROR,
+            expected_log_msg,
+        )
+
+        # Act & Assert
+        with pytest.raises(type(exception_instance), match=match_pattern):
+            s3_builder.delete_object(bucket=bucket, key=key)
+
+        mock_s3.delete_object.assert_called_once_with(Bucket=bucket, Key=key)
+        assert expected_log in caplog.record_tuples
