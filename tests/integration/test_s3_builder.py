@@ -149,3 +149,83 @@ class TestUploadFile:
         # Act & Assert
         with pytest.raises(FileNotFoundError):
             s3_builder.upload_file(filename=str(file_path), bucket=bucket_name, key=key)
+
+
+class TestListObjects:
+    """Group integration tests for S3Builder.list_objects against LocalStack."""
+
+    @pytest.mark.parametrize(
+        "created_keys, search_prefix, expected_keys",
+        [
+            # Case 1: List all objects when no prefix is provided
+            (
+                ["file1.txt", "file2.pdf", "image.png"],
+                "",
+                ["file1.txt", "file2.pdf", "image.png"],
+            ),
+            # Case 2: Filter objects by folder-like prefix
+            (
+                ["documents/report1.pdf", "documents/report2.pdf", "images/photo.png"],
+                "documents/",
+                ["documents/report1.pdf", "documents/report2.pdf"],
+            ),
+            # Case 3: Filter by partial filename prefix
+            (
+                ["logs_2026_01.txt", "logs_2026_02.txt", "notes.txt"],
+                "logs_2026",
+                ["logs_2026_01.txt", "logs_2026_02.txt"],
+            ),
+            # Case 4: Search with a prefix that matches no objects
+            (
+                ["file1.txt", "file2.txt"],
+                "non_existing_folder/",
+                [],
+            ),
+            # Case 5: Empty bucket listing
+            (
+                [],
+                "",
+                [],
+            ),
+        ],
+    )
+    def test_list_objects_success_variations(
+        self,
+        s3_builder: S3Builder,
+        created_keys: list[str],
+        search_prefix: str,
+        expected_keys: list[str],
+    ) -> None:
+        """
+        Test listing objects in a real S3 bucket with different prefixes
+        and file structures.
+        """
+        # Arrange
+        bucket_name = "list-objects-integration-bucket"
+        s3_builder.create_bucket(bucket_name)
+
+        # Upload dummy objects to LocalStack
+        for key in created_keys:
+            s3_builder.s3.put_object(
+                Bucket=bucket_name,
+                Key=key,
+                Body=b"Integration test content",
+            )
+
+        # Act
+        results = s3_builder.list_objects(bucket=bucket_name, prefix=search_prefix)
+
+        # Assert
+        retrieved_keys = [obj["Key"] for obj in results]
+        assert sorted(retrieved_keys) == sorted(expected_keys)
+
+    def test_list_objects_bucket_not_found(self, s3_builder: S3Builder) -> None:
+        """Test listing objects from a non-existent bucket raises ClientError."""
+        # Arrange
+        non_existent_bucket = "non-existent-bucket-for-list"
+
+        # Act & Assert
+        with pytest.raises(ClientError) as exc_info:
+            s3_builder.list_objects(bucket=non_existent_bucket)
+
+        assert exc_info.value.response["Error"]["Code"] == "NoSuchBucket"
