@@ -282,3 +282,61 @@ class TestCopyObject:
             )
 
         assert exc_info.value.response["Error"]["Code"] in ("NoSuchKey", "404")
+
+
+class TestDeleteObject:
+    """Group integration tests for S3Builder.delete_object against LocalStack."""
+
+    def test_delete_object_success(self, s3_builder: S3Builder) -> None:
+        """Test successfully deleting an existing object from an S3 bucket."""
+        # Arrange
+        bucket_name = "delete-integration-bucket"
+        s3_builder.create_bucket(bucket_name)
+
+        key = "documents/file_to_delete.pdf"
+        s3_builder.s3.put_object(
+            Bucket=bucket_name,
+            Key=key,
+            Body=b"Content to be deleted",
+        )
+
+        # Act
+        result = s3_builder.delete_object(bucket=bucket_name, key=key)
+
+        # Assert
+        assert result is True
+
+        # Verify the object no longer exists in S3
+        with pytest.raises(ClientError) as exc_info:
+            s3_builder.s3.get_object(Bucket=bucket_name, Key=key)
+
+        assert exc_info.value.response["Error"]["Code"] in ("NoSuchKey", "404")
+
+    def test_delete_non_existent_object_idempotency(
+        self, s3_builder: S3Builder
+    ) -> None:
+        """Test deleting a non-existent object succeeds due to S3 idempotency
+        (204 No Content).
+        """
+        # Arrange
+        bucket_name = "delete-idempotent-bucket"
+        s3_builder.create_bucket(bucket_name)
+
+        non_existent_key = "folder/missing_file.txt"
+
+        # Act
+        result = s3_builder.delete_object(bucket=bucket_name, key=non_existent_key)
+
+        # Assert
+        assert result is True
+
+    def test_delete_object_bucket_not_found(self, s3_builder: S3Builder) -> None:
+        """Test deleting an object from a non-existent bucket raises ClientError."""
+        # Arrange
+        non_existent_bucket = "non-existent-bucket-for-delete"
+
+        # Act & Assert
+        with pytest.raises(ClientError) as exc_info:
+            s3_builder.delete_object(bucket=non_existent_bucket, key="any_file.txt")
+
+        assert exc_info.value.response["Error"]["Code"] == "NoSuchBucket"
