@@ -229,3 +229,56 @@ class TestListObjects:
             s3_builder.list_objects(bucket=non_existent_bucket)
 
         assert exc_info.value.response["Error"]["Code"] == "NoSuchBucket"
+
+
+class TestCopyObject:
+    """Group integration tests for S3Builder.copy_object against LocalStack."""
+
+    def test_copy_object_success(self, s3_builder: S3Builder) -> None:
+        """Test copying an object between different keys in LocalStack."""
+        # Arrange
+        bucket_name = "copy-integration-bucket"
+        s3_builder.create_bucket(bucket_name)
+
+        source_key = "uploads/document.pdf"
+        dest_key = "archive/2026/document.pdf"
+        content = b"PDF document payload"
+
+        # Put source object directly in S3
+        s3_builder.s3.put_object(
+            Bucket=bucket_name,
+            Key=source_key,
+            Body=content,
+        )
+
+        # Act
+        result = s3_builder.copy_object(
+            source_bucket=bucket_name,
+            source_key=source_key,
+            dest_bucket=bucket_name,
+            dest_key=dest_key,
+        )
+
+        # Assert
+        assert result is True
+
+        # Verify that the copied object exists and contains the expected content
+        obj = s3_builder.s3.get_object(Bucket=bucket_name, Key=dest_key)
+        assert obj["Body"].read() == content
+
+    def test_copy_object_source_not_found(self, s3_builder: S3Builder) -> None:
+        """Test copying a non-existent object raises ClientError."""
+        # Arrange
+        bucket_name = "copy-error-bucket"
+        s3_builder.create_bucket(bucket_name)
+
+        # Act & Assert
+        with pytest.raises(ClientError) as exc_info:
+            s3_builder.copy_object(
+                source_bucket=bucket_name,
+                source_key="non_existent_file.txt",
+                dest_bucket=bucket_name,
+                dest_key="destination_file.txt",
+            )
+
+        assert exc_info.value.response["Error"]["Code"] in ("NoSuchKey", "404")
