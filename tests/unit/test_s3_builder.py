@@ -497,3 +497,122 @@ class TestListObjects:
         mock_s3.get_paginator.assert_called_once_with("list_objects_v2")
         mock_paginator.paginate.assert_called_once_with(Bucket=bucket, Prefix="")
         assert expected_log in caplog.record_tuples
+
+
+class TestCopyObject:
+    """Group unit tests for S3Builder.copy_object."""
+
+    @pytest.mark.parametrize(
+        "source_bucket, source_key, dest_bucket, dest_key",
+        [
+            # Case 1: Copying within the same bucket (renaming/moving)
+            ("my-bucket", "file.txt", "my-bucket", "documents/file.txt"),
+            # Case 2: Copying between different buckets
+            ("source-bucket", "raw/data.csv", "target-bucket", "processed/data.csv"),
+        ],
+    )
+    def test_copy_object_success(
+        self,
+        s3_builder: S3Builder,
+        caplog: pytest.LogCaptureFixture,
+        source_bucket: str,
+        source_key: str,
+        dest_bucket: str,
+        dest_key: str,
+    ) -> None:
+        """Test successful execution of copy_object across various scenarios."""
+        # Arrange
+        caplog.set_level(logging.INFO)
+        mock_s3 = cast(MagicMock, s3_builder.s3)
+
+        expected_log: tuple[str, int, str] = (
+            "s3_builder",
+            logging.INFO,
+            f"Successfully copied {source_bucket}/{source_key} to "
+            f"{dest_bucket}/{dest_key}",
+        )
+
+        # Act
+        result = s3_builder.copy_object(
+            source_bucket=source_bucket,
+            source_key=source_key,
+            dest_bucket=dest_bucket,
+            dest_key=dest_key,
+        )
+
+        # Assert
+        mock_s3.copy_object.assert_called_once_with(
+            CopySource={"Bucket": source_bucket, "Key": source_key},
+            Bucket=dest_bucket,
+            Key=dest_key,
+        )
+        assert result is True
+        assert expected_log in caplog.record_tuples
+
+    @pytest.mark.parametrize(
+        "exception_instance, match_pattern, expected_log_msg",
+        [
+            # Case 1: AWS API ClientError (e.g., source object or bucket does not exist)
+            (
+                ClientError(
+                    {
+                        "Error": {
+                            "Code": "NoSuchKey",
+                            "Message": "The specified key does not exist",
+                        }
+                    },
+                    "CopyObject",
+                ),
+                "The specified key does not exist",
+                "Failed to copy object source-bkt/src-key to dest-bkt/dst-key "
+                "due to S3 API error: An error occurred (NoSuchKey) when calling "
+                "the CopyObject operation: The specified key does not exist",
+            ),
+            # Case 2: Unexpected generic exception during copy operation
+            (
+                Exception("Unexpected S3 error"),
+                "Unexpected S3 error",
+                "An unexpected error occurred while copying "
+                "source-bkt/src-key to dest-bkt/dst-key: Unexpected S3 error",
+            ),
+        ],
+    )
+    def test_copy_object_errors(
+        self,
+        s3_builder: S3Builder,
+        caplog: pytest.LogCaptureFixture,
+        exception_instance: Exception,
+        match_pattern: str,
+        expected_log_msg: str,
+    ) -> None:
+        """Test exception handling and logging behavior for copy_object failures."""
+        # Arrange
+        source_bucket = "source-bkt"
+        source_key = "src-key"
+        dest_bucket = "dest-bkt"
+        dest_key = "dst-key"
+
+        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_s3.copy_object.side_effect = exception_instance
+
+        expected_log: tuple[str, int, str] = (
+            "s3_builder",
+            logging.ERROR,
+            expected_log_msg,
+        )
+
+        # Act & Assert
+        with pytest.raises(type(exception_instance), match=match_pattern):
+            s3_builder.copy_object(
+                source_bucket=source_bucket,
+                source_key=source_key,
+                dest_bucket=dest_bucket,
+                dest_key=dest_key,
+            )
+
+        mock_s3.copy_object.assert_called_once_with(
+            CopySource={"Bucket": source_bucket, "Key": source_key},
+            Bucket=dest_bucket,
+            Key=dest_key,
+        )
+        assert expected_log in caplog.record_tuples

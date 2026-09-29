@@ -4,7 +4,7 @@ import boto3
 from boto3.exceptions import S3UploadFailedError
 from botocore.exceptions import ClientError
 from mypy_boto3_s3 import S3Client
-from mypy_boto3_s3.type_defs import ObjectTypeDef
+from mypy_boto3_s3.type_defs import CopySourceTypeDef, ObjectTypeDef
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +166,62 @@ class S3Builder:
             logger.exception(
                 "An unexpected error occurred while listing objects in bucket %s: %s",
                 bucket,
+                ex,
+            )
+            raise
+
+    def copy_object(
+        self,
+        source_bucket: str,
+        source_key: str,
+        dest_bucket: str,
+        dest_key: str,
+    ) -> bool:
+        """Copy an object from a source S3 location to a destination S3 location.
+
+        Args:
+            source_bucket (str): Name of the source S3 bucket.
+            source_key (str): S3 key of the source object.
+            dest_bucket (str): Name of the destination S3 bucket.
+            dest_key (str): S3 key for the copied object in the destination bucket.
+
+        Returns:
+            bool: True if the object was copied successfully.
+
+        Raises:
+            ClientError: If an error occurs during interaction with S3 API.
+            Exception: If an unexpected error occurs while copying object.
+        """
+        copy_source: CopySourceTypeDef = {"Bucket": source_bucket, "Key": source_key}
+        try:
+            self.s3.copy_object(
+                CopySource=copy_source, Bucket=dest_bucket, Key=dest_key
+            )
+            logger.info(
+                "Successfully copied %s/%s to %s/%s",
+                source_bucket,
+                source_key,
+                dest_bucket,
+                dest_key,
+            )
+            return True
+        except ClientError as ex:
+            logger.exception(
+                "Failed to copy object %s/%s to %s/%s due to S3 API error: %s",
+                source_bucket,
+                source_key,
+                dest_bucket,
+                dest_key,
+                ex,
+            )
+            raise
+        except Exception as ex:
+            logger.exception(
+                "An unexpected error occurred while copying %s/%s to %s/%s: %s",
+                source_bucket,
+                source_key,
+                dest_bucket,
+                dest_key,
                 ex,
             )
             raise
