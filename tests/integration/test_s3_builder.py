@@ -340,3 +340,104 @@ class TestDeleteObject:
             s3_builder.delete_object(bucket=non_existent_bucket, key="any_file.txt")
 
         assert exc_info.value.response["Error"]["Code"] == "NoSuchBucket"
+
+
+class TestMoveObject:
+    """Group integration tests for S3Builder.move_object against LocalStack."""
+
+    @pytest.mark.parametrize(
+        "source_bucket, source_key, dest_bucket, dest_key, file_content",
+        [
+            # Case 1: Move within the same bucket (organizing from inbox to processed)
+            (
+                "same-bucket-move",
+                "inbox/document.pdf",
+                "same-bucket-move",
+                "processed/document.pdf",
+                b"PDF document payload",
+            ),
+            # Case 2: Move across different buckets (cross-bucket transfer)
+            (
+                "source-bucket-move",
+                "raw/data.csv",
+                "dest-bucket-move",
+                "archive/data.csv",
+                b"id,name\n1,Alice",
+            ),
+            # Case 3: Move and rename file in a single operation
+            (
+                "rename-bucket-move",
+                "temp_report.txt",
+                "rename-bucket-move",
+                "final_report_2026.txt",
+                b"Annual report summary content",
+            ),
+        ],
+    )
+    def test_move_object_success_variations(
+        self,
+        s3_builder: S3Builder,
+        source_bucket: str,
+        source_key: str,
+        dest_bucket: str,
+        dest_key: str,
+        file_content: bytes,
+    ) -> None:
+        """Test moving objects in LocalStack across various bucket and key scenarios."""
+        # Arrange
+        s3_builder.create_bucket(source_bucket)
+        if source_bucket != dest_bucket:
+            s3_builder.create_bucket(dest_bucket)
+
+        s3_builder.s3.put_object(
+            Bucket=source_bucket,
+            Key=source_key,
+            Body=file_content,
+        )
+
+        # Act
+        result = s3_builder.move_object(
+            source_bucket=source_bucket,
+            source_key=source_key,
+            dest_bucket=dest_bucket,
+            dest_key=dest_key,
+        )
+
+        # Assert
+        assert result is True
+
+        # 1. Verify source object no longer exists
+        with pytest.raises(ClientError) as exc_info:
+            s3_builder.s3.get_object(Bucket=source_bucket, Key=source_key)
+        assert exc_info.value.response["Error"]["Code"] in ("NoSuchKey", "404")
+
+        # 2. Verify destination object exists and matches original content
+        dest_obj = s3_builder.s3.get_object(Bucket=dest_bucket, Key=dest_key)
+        assert dest_obj["Body"].read() == file_content
+
+    def test_move_object_source_not_found(self, s3_builder: S3Builder) -> None:
+        """Test moving a non-existent source object raises ClientError without creating
+        destination file.
+        """
+        # Arrange
+        bucket_name = "move-error-bucket"
+        s3_builder.create_bucket(bucket_name)
+
+        non_existent_key = "missing_file.txt"
+        dest_key = "destination.txt"
+
+        # Act & Assert
+        with pytest.raises(ClientError) as exc_info:
+            s3_builder.move_object(
+                source_bucket=bucket_name,
+                source_key=non_existent_key,
+                dest_bucket=bucket_name,
+                dest_key=dest_key,
+            )
+
+        assert exc_info.value.response["Error"]["Code"] in ("NoSuchKey", "404")
+
+        # Verify destination key was not created (short-circuit verification)
+        with pytest.raises(ClientError) as exc_info_dest:
+            s3_builder.s3.get_object(Bucket=bucket_name, Key=dest_key)
+        assert exc_info_dest.value.response["Error"]["Code"] in ("NoSuchKey", "404")
