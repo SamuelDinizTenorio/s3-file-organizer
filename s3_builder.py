@@ -264,3 +264,63 @@ class S3Builder:
                 ex,
             )
             raise
+
+    def move_object(
+        self,
+        source_bucket: str,
+        source_key: str,
+        dest_bucket: str,
+        dest_key: str,
+    ) -> bool:
+        """Move an object from a source S3 location to a destination S3 location.
+
+        Args:
+            source_bucket (str): Name of the source S3 bucket.
+            source_key (str): S3 key of the source object.
+            dest_bucket (str): Name of the destination S3 bucket.
+            dest_key (str): S3 key for the moved object in the destination bucket.
+
+        Returns:
+            bool: True if the object was moved successfully.
+
+        Raises:
+            ClientError: If an error occurs during interaction with S3 API.
+            Exception: If an unexpected error occurs while moving object.
+        """
+        try:
+            self.copy_object(
+                source_bucket=source_bucket,
+                source_key=source_key,
+                dest_bucket=dest_bucket,
+                dest_key=dest_key,
+            )
+            self.delete_object(bucket=source_bucket, key=source_key)
+
+            logger.info(
+                "Successfully moved object %s/%s to %s/%s",
+                source_bucket,
+                source_key,
+                dest_bucket,
+                dest_key,
+            )
+            return True
+        except ClientError as ex:
+            logger.exception(
+                "Failed to move object %s/%s to %s/%s due to S3 API error: %s",
+                source_bucket,
+                source_key,
+                dest_bucket,
+                dest_key,
+                ex,
+            )
+            raise
+        except Exception as ex:
+            logger.exception(
+                "An unexpected error occurred while moving %s/%s to %s/%s: %s",
+                source_bucket,
+                source_key,
+                dest_bucket,
+                dest_key,
+                ex,
+            )
+            raise

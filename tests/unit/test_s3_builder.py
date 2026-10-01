@@ -713,3 +713,170 @@ class TestDeleteObject:
 
         mock_s3.delete_object.assert_called_once_with(Bucket=bucket, Key=key)
         assert expected_log in caplog.record_tuples
+
+
+class TestMoveObject:
+    """Group unit tests for S3Builder.move_object."""
+
+    @pytest.mark.parametrize(
+        "source_bucket, source_key, dest_bucket, dest_key",
+        [
+            # Case 1: Move within the same bucket (organizing/renaming)
+            ("my-bucket", "inbox/file.txt", "my-bucket", "processed/file.txt"),
+            # Case 2: Move across different buckets
+            ("source-bucket", "raw/data.csv", "dest-bucket", "archive/data.csv"),
+        ],
+    )
+    def test_move_object_success(
+        self,
+        s3_builder: S3Builder,
+        caplog: pytest.LogCaptureFixture,
+        source_bucket: str,
+        source_key: str,
+        dest_bucket: str,
+        dest_key: str,
+    ) -> None:
+        """Test successful execution of move_object across
+        various bucket combinations.
+        """
+        # Arrange
+        caplog.set_level(logging.INFO)
+
+        with (
+            patch.object(s3_builder, "copy_object", return_value=True) as mock_copy,
+            patch.object(s3_builder, "delete_object", return_value=True) as mock_delete,
+        ):
+            expected_log: tuple[str, int, str] = (
+                "s3_builder",
+                logging.INFO,
+                f"Successfully moved object {source_bucket}/{source_key} "
+                f"to {dest_bucket}/{dest_key}",
+            )
+
+            # Act
+            result = s3_builder.move_object(
+                source_bucket=source_bucket,
+                source_key=source_key,
+                dest_bucket=dest_bucket,
+                dest_key=dest_key,
+            )
+
+            # Assert
+            mock_copy.assert_called_once_with(
+                source_bucket=source_bucket,
+                source_key=source_key,
+                dest_bucket=dest_bucket,
+                dest_key=dest_key,
+            )
+            mock_delete.assert_called_once_with(bucket=source_bucket, key=source_key)
+            assert result is True
+            assert expected_log in caplog.record_tuples
+
+    @pytest.mark.parametrize(
+        "exception_instance, failing_step, match_pattern, expected_log_msg",
+        [
+            # Case 1: ClientError during copy -> delete MUST NOT be called
+            # (short-circuit)
+            (
+                ClientError(
+                    {
+                        "Error": {
+                            "Code": "NoSuchKey",
+                            "Message": "The specified key does not exist",
+                        }
+                    },
+                    "CopyObject",
+                ),
+                "copy",
+                "The specified key does not exist",
+                "Failed to move object src-bkt/src-key to dst-bkt/dst-key "
+                "due to S3 API error: An error occurred (NoSuchKey) when calling "
+                "the CopyObject operation: The specified key does not exist",
+            ),
+            # Case 2: ClientError during delete (after successful copy)
+            (
+                ClientError(
+                    {
+                        "Error": {
+                            "Code": "AccessDenied",
+                            "Message": "Access Denied",
+                        }
+                    },
+                    "DeleteObject",
+                ),
+                "delete",
+                "Access Denied",
+                "Failed to move object src-bkt/src-key to dst-bkt/dst-key "
+                "due to S3 API error: An error occurred (AccessDenied) when calling "
+                "the DeleteObject operation: Access Denied",
+            ),
+            # Case 3: Unexpected generic exception during copy step
+            (
+                Exception("Unexpected error during move"),
+                "copy",
+                "Unexpected error during move",
+                "An unexpected error occurred while moving "
+                "src-bkt/src-key to dst-bkt/dst-key: Unexpected error during move",
+            ),
+        ],
+    )
+    def test_move_object_errors(
+        self,
+        s3_builder: S3Builder,
+        caplog: pytest.LogCaptureFixture,
+        exception_instance: Exception,
+        failing_step: str,
+        match_pattern: str,
+        expected_log_msg: str,
+    ) -> None:
+        """Test exception handling and short-circuit logic for move_object failures."""
+        # Arrange
+        source_bucket = "src-bkt"
+        source_key = "src-key"
+        dest_bucket = "dst-bkt"
+        dest_key = "dst-key"
+
+        copy_kwargs: dict[str, Any] = {}
+        delete_kwargs: dict[str, Any] = {}
+
+        if failing_step == "copy":
+            copy_kwargs["side_effect"] = exception_instance
+            delete_kwargs["return_value"] = True
+        else:
+            copy_kwargs["return_value"] = True
+            delete_kwargs["side_effect"] = exception_instance
+
+        with (
+            patch.object(s3_builder, "copy_object", **copy_kwargs) as mock_copy,
+            patch.object(s3_builder, "delete_object", **delete_kwargs) as mock_delete,
+        ):
+            expected_log: tuple[str, int, str] = (
+                "s3_builder",
+                logging.ERROR,
+                expected_log_msg,
+            )
+
+            # Act & Assert
+            with pytest.raises(type(exception_instance), match=match_pattern):
+                s3_builder.move_object(
+                    source_bucket=source_bucket,
+                    source_key=source_key,
+                    dest_bucket=dest_bucket,
+                    dest_key=dest_key,
+                )
+
+            mock_copy.assert_called_once_with(
+                source_bucket=source_bucket,
+                source_key=source_key,
+                dest_bucket=dest_bucket,
+                dest_key=dest_key,
+            )
+
+            if failing_step == "copy":
+                mock_delete.assert_not_called()
+            else:
+                mock_delete.assert_called_once_with(
+                    bucket=source_bucket, key=source_key
+                )
+
+            assert expected_log in caplog.record_tuples
