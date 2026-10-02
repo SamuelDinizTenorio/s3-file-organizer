@@ -33,7 +33,7 @@ class S3Builder:
             Exception: For any other unexpected errors during initialization.
         """
         try:
-            self.s3: S3Client = boto3.client(
+            self.s3_client: S3Client = boto3.client(
                 service_name="s3",
                 endpoint_url=endpoint_url,
                 aws_access_key_id=access_key_id,
@@ -61,7 +61,7 @@ class S3Builder:
             Exception: If an unexpected error occurs while creating the bucket.
         """
         try:
-            self.s3.create_bucket(Bucket=bucket_name)
+            self.s3_client.create_bucket(Bucket=bucket_name)
             logger.info("Successfully created bucket %s", bucket_name)
             return True
         except ClientError as ex:
@@ -101,7 +101,7 @@ class S3Builder:
             Exception: If an unexpected error occurs while uploading file.
         """
         try:
-            self.s3.upload_file(Filename=filename, Bucket=bucket, Key=key)
+            self.s3_client.upload_file(Filename=filename, Bucket=bucket, Key=key)
             logger.info("Successfully uploaded %s to %s/%s", filename, bucket, key)
             return True
         except (ClientError, S3UploadFailedError) as ex:
@@ -141,7 +141,7 @@ class S3Builder:
             Exception: If an unexpected error occurs while listing objects.
         """
         try:
-            paginator = self.s3.get_paginator("list_objects_v2")
+            paginator = self.s3_client.get_paginator("list_objects_v2")
             objects: list[ObjectTypeDef] = []
 
             for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
@@ -194,7 +194,7 @@ class S3Builder:
         """
         copy_source: CopySourceTypeDef = {"Bucket": source_bucket, "Key": source_key}
         try:
-            self.s3.copy_object(
+            self.s3_client.copy_object(
                 CopySource=copy_source, Bucket=dest_bucket, Key=dest_key
             )
             logger.info(
@@ -241,7 +241,7 @@ class S3Builder:
             Exception: If an unexpected error occurs while deleting the object.
         """
         try:
-            self.s3.delete_object(Bucket=bucket, Key=key)
+            self.s3_client.delete_object(Bucket=bucket, Key=key)
             logger.info(
                 "The object %s/%s was successfully deleted",
                 bucket,

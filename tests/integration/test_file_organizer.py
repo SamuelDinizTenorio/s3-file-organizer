@@ -26,7 +26,7 @@ def test_bucket(localstack_s3_builder: S3Builder) -> Generator[str, None, None]:
     and destroys it afterward.
     """
     bucket_name = f"test-bucket-{uuid.uuid4().hex[:8]}"
-    client = localstack_s3_builder.s3
+    client = localstack_s3_builder.s3_client
 
     client.create_bucket(Bucket=bucket_name)
     yield bucket_name
@@ -122,7 +122,7 @@ class TestOrganizeBucketIntegration:
         """Verify end-to-end file organization correctly relocates objects
         and removes sources.
         """
-        client = localstack_s3_builder.s3
+        client = localstack_s3_builder.s3_client
 
         # 1. Seed bucket with sample files under inbox/ prefix
         client.put_object(
@@ -160,7 +160,7 @@ class TestOrganizeBucketIntegration:
         self, localstack_s3_builder: S3Builder, test_bucket: str
     ) -> None:
         """Verify unmapped file extensions are routed to the fallback folder in S3."""
-        client = localstack_s3_builder.s3
+        client = localstack_s3_builder.s3_client
         client.put_object(Bucket=test_bucket, Key="inbox/app.exe", Body=b"binary data")
 
         organizer = FileOrganizer(s3_builder=localstack_s3_builder)
@@ -182,7 +182,7 @@ class TestOrganizeBucketIntegration:
         """Verify unmapped files remain untouched when uncategorized_prefix
         is set to None.
         """
-        client = localstack_s3_builder.s3
+        client = localstack_s3_builder.s3_client
         client.put_object(Bucket=test_bucket, Key="inbox/unknown.xyz", Body=b"raw data")
 
         organizer = FileOrganizer(s3_builder=localstack_s3_builder)
@@ -202,7 +202,7 @@ class TestOrganizeBucketIntegration:
         """Verify objects already present in their target prefix are skipped
         without redundant S3 moves.
         """
-        client = localstack_s3_builder.s3
+        client = localstack_s3_builder.s3_client
         client.put_object(
             Bucket=test_bucket, Key="documents/existing_doc.pdf", Body=b"PDF data"
         )
@@ -223,7 +223,7 @@ class TestOrganizeBucketIntegration:
         """Verify organizing with source_prefix restricts scanning exclusively
         to that prefix.
         """
-        client = localstack_s3_builder.s3
+        client = localstack_s3_builder.s3_client
         client.put_object(Bucket=test_bucket, Key="inbox/file1.pdf", Body=b"data 1")
         client.put_object(Bucket=test_bucket, Key="archive/file2.pdf", Body=b"data 2")
 

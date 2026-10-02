@@ -171,7 +171,7 @@ class TestCreateBucket:
         # Arrange
         caplog.set_level(logging.INFO)
         bucket_name: str = "my-bucket"
-        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_s3 = cast(MagicMock, s3_builder.s3_client)
         mock_s3.create_bucket.side_effect = side_effect
 
         expected_log: tuple[str, int, str] = (
@@ -224,7 +224,7 @@ class TestCreateBucket:
     ) -> None:
         # Arrange
         bucket_name: str = "my-bucket"
-        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_s3 = cast(MagicMock, s3_builder.s3_client)
         mock_s3.create_bucket.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (
@@ -262,7 +262,7 @@ class TestUploadFile:
     ) -> None:
         # Arrange
         caplog.set_level(logging.INFO)
-        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_s3 = cast(MagicMock, s3_builder.s3_client)
 
         expected_log: tuple[str, int, str] = (
             "s3_builder",
@@ -330,7 +330,7 @@ class TestUploadFile:
         bucket: str = "my-bucket"
         key: str = "my-key"
 
-        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_s3 = cast(MagicMock, s3_builder.s3_client)
         mock_s3.upload_file.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (
@@ -414,7 +414,7 @@ class TestListObjects:
         """Test successful execution of list_objects across various scenarios."""
         # Arrange
         caplog.set_level(logging.INFO)
-        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_s3 = cast(MagicMock, s3_builder.s3_client)
         mock_paginator = MagicMock()
         mock_s3.get_paginator.return_value = mock_paginator
         mock_paginator.paginate.return_value = paginator_pages
@@ -479,7 +479,7 @@ class TestListObjects:
         """Test exception handling and logging behavior for list_objects failures."""
         # Arrange
         bucket: str = "my-bucket"
-        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_s3 = cast(MagicMock, s3_builder.s3_client)
         mock_paginator = MagicMock()
         mock_s3.get_paginator.return_value = mock_paginator
         mock_paginator.paginate.side_effect = exception_instance
@@ -523,7 +523,7 @@ class TestCopyObject:
         """Test successful execution of copy_object across various scenarios."""
         # Arrange
         caplog.set_level(logging.INFO)
-        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_s3 = cast(MagicMock, s3_builder.s3_client)
 
         expected_log: tuple[str, int, str] = (
             "s3_builder",
@@ -592,7 +592,7 @@ class TestCopyObject:
         dest_bucket = "dest-bkt"
         dest_key = "dst-key"
 
-        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_s3 = cast(MagicMock, s3_builder.s3_client)
         mock_s3.copy_object.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (
@@ -641,7 +641,7 @@ class TestDeleteObject:
         """
         # Arrange
         caplog.set_level(logging.INFO)
-        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_s3 = cast(MagicMock, s3_builder.s3_client)
 
         expected_log: tuple[str, int, str] = (
             "s3_builder",
@@ -698,7 +698,7 @@ class TestDeleteObject:
         bucket = "my-bucket"
         key = "my-key"
 
-        mock_s3 = cast(MagicMock, s3_builder.s3)
+        mock_s3 = cast(MagicMock, s3_builder.s3_client)
         mock_s3.delete_object.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (

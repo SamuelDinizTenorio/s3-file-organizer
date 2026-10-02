@@ -20,11 +20,11 @@ def s3_builder() -> Generator[S3Builder, None, None]:
 
     yield builder_instance
 
-    response = builder_instance.s3.list_buckets()
+    response = builder_instance.s3_client.list_buckets()
 
     # Teardown
     for bucket in response.get("Buckets", []):
-        s3 = builder_instance.s3
+        s3 = builder_instance.s3_client
         objects = s3.list_objects_v2(Bucket=bucket["Name"])
 
         for obj in objects.get("Contents", []):
@@ -46,7 +46,7 @@ class TestCreateBucketIntegration:
         # Assert
         assert result is True
 
-        response = s3_builder.s3.list_buckets()
+        response = s3_builder.s3_client.list_buckets()
         bucket_names = [bucket["Name"] for bucket in response.get("Buckets", [])]
         assert bucket_name in bucket_names
 
@@ -63,7 +63,7 @@ class TestCreateBucketIntegration:
         # Assert
         assert result is True
 
-        response = s3_builder.s3.list_buckets()
+        response = s3_builder.s3_client.list_buckets()
         bucket_names = [bucket["Name"] for bucket in response.get("Buckets", [])]
         assert bucket_name in bucket_names
         assert bucket_names.count(bucket_name) == 1
@@ -124,7 +124,7 @@ class TestUploadFileIntegration:
         # Assert
         assert result is True
 
-        obj = s3_builder.s3.head_object(Bucket=bucket_name, Key=key)
+        obj = s3_builder.s3_client.head_object(Bucket=bucket_name, Key=key)
         assert obj["ResponseMetadata"]["HTTPStatusCode"] == 200
 
     def test_upload_file_bucket_not_found_integration(
@@ -210,7 +210,7 @@ class TestListObjectsIntegration:
 
         # Upload dummy objects to LocalStack
         for key in created_keys:
-            s3_builder.s3.put_object(
+            s3_builder.s3_client.put_object(
                 Bucket=bucket_name,
                 Key=key,
                 Body=b"Integration test content",
@@ -251,7 +251,7 @@ class TestCopyObjectIntegration:
         content = b"PDF document payload"
 
         # Put source object directly in S3
-        s3_builder.s3.put_object(
+        s3_builder.s3_client.put_object(
             Bucket=bucket_name,
             Key=source_key,
             Body=content,
@@ -269,7 +269,7 @@ class TestCopyObjectIntegration:
         assert result is True
 
         # Verify that the copied object exists and contains the expected content
-        obj = s3_builder.s3.get_object(Bucket=bucket_name, Key=dest_key)
+        obj = s3_builder.s3_client.get_object(Bucket=bucket_name, Key=dest_key)
         assert obj["Body"].read() == content
 
     def test_copy_object_source_not_found_integration(
@@ -302,7 +302,7 @@ class TestDeleteObjectIntegration:
         s3_builder.create_bucket(bucket_name)
 
         key = "documents/file_to_delete.pdf"
-        s3_builder.s3.put_object(
+        s3_builder.s3_client.put_object(
             Bucket=bucket_name,
             Key=key,
             Body=b"Content to be deleted",
@@ -316,7 +316,7 @@ class TestDeleteObjectIntegration:
 
         # Verify the object no longer exists in S3
         with pytest.raises(ClientError) as exc_info:
-            s3_builder.s3.get_object(Bucket=bucket_name, Key=key)
+            s3_builder.s3_client.get_object(Bucket=bucket_name, Key=key)
 
         assert exc_info.value.response["Error"]["Code"] in ("NoSuchKey", "404")
 
@@ -399,7 +399,7 @@ class TestMoveObjectIntegration:
         if source_bucket != dest_bucket:
             s3_builder.create_bucket(dest_bucket)
 
-        s3_builder.s3.put_object(
+        s3_builder.s3_client.put_object(
             Bucket=source_bucket,
             Key=source_key,
             Body=file_content,
@@ -418,11 +418,11 @@ class TestMoveObjectIntegration:
 
         # 1. Verify source object no longer exists
         with pytest.raises(ClientError) as exc_info:
-            s3_builder.s3.get_object(Bucket=source_bucket, Key=source_key)
+            s3_builder.s3_client.get_object(Bucket=source_bucket, Key=source_key)
         assert exc_info.value.response["Error"]["Code"] in ("NoSuchKey", "404")
 
         # 2. Verify destination object exists and matches original content
-        dest_obj = s3_builder.s3.get_object(Bucket=dest_bucket, Key=dest_key)
+        dest_obj = s3_builder.s3_client.get_object(Bucket=dest_bucket, Key=dest_key)
         assert dest_obj["Body"].read() == file_content
 
     def test_move_object_source_not_found_integration(
@@ -451,5 +451,5 @@ class TestMoveObjectIntegration:
 
         # Verify destination key was not created (short-circuit verification)
         with pytest.raises(ClientError) as exc_info_dest:
-            s3_builder.s3.get_object(Bucket=bucket_name, Key=dest_key)
+            s3_builder.s3_client.get_object(Bucket=bucket_name, Key=dest_key)
         assert exc_info_dest.value.response["Error"]["Code"] in ("NoSuchKey", "404")
