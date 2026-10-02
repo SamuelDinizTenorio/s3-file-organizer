@@ -14,9 +14,9 @@ def localstack_s3_builder() -> S3Builder:
     endpoint_url = os.getenv("AWS_ENDPOINT_URL", "http://localhost:4566")
     return S3Builder(
         endpoint_url=endpoint_url,
-        access_key_id="test",
-        secret_access_key="test",
-        region="us-east-1",
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name="us-east-1",
     )
 
 

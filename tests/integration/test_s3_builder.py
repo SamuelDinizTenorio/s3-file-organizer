@@ -13,9 +13,9 @@ def s3_builder() -> Generator[S3Builder, None, None]:
     # Setup
     builder_instance = S3Builder(
         endpoint_url="http://localhost:4566",
-        access_key_id="test",
-        secret_access_key="test",
-        region="us-east-1",
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name="us-east-1",
     )
 
     yield builder_instance

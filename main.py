@@ -22,9 +22,9 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     s3_builder = S3Builder(
         endpoint_url=AWS_ENDPOINT_URL,
-        access_key_id=AWS_ACCESS_KEY_ID,
-        secret_access_key=AWS_SECRET_ACCESS_KEY,
-        region=AWS_REGION,
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION,
     )
     logger.info("S3Builder initialized successfully: %s", s3_builder)
 

@@ -15,9 +15,9 @@ class S3Builder:
     def __init__(
         self,
         endpoint_url: str = "http://localhost:4566",
-        access_key_id: str = "test",
-        secret_access_key: str = "test",
-        region: str = "us-east-1",
+        aws_access_key_id: str = "test",
+        aws_secret_access_key: str = "test",
+        region_name: str = "us-east-1",
     ) -> None:
         """Initialize the S3Builder client.
 
@@ -36,9 +36,9 @@ class S3Builder:
             self.s3_client: S3Client = boto3.client(
                 service_name="s3",
                 endpoint_url=endpoint_url,
-                aws_access_key_id=access_key_id,
-                aws_secret_access_key=secret_access_key,
-                region_name=region,
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
+                region_name=region_name,
             )
         except ClientError as ex:
             logger.exception("Failed in create S3 client: %s", ex)

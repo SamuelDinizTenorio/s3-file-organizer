@@ -45,9 +45,9 @@ class TestInit:
             (
                 {
                     "endpoint_url": "https://localhost:4566",
-                    "access_key_id": "test123",
-                    "secret_access_key": "test123",
-                    "region": "us-east-2",
+                    "aws_access_key_id": "test123",
+                    "aws_secret_access_key": "test123",
+                    "region_name": "us-east-2",
                 },
                 {
                     "service_name": "s3",
@@ -61,7 +61,7 @@ class TestInit:
             (
                 {
                     "endpoint_url": "http://s3.local:4566",
-                    "region": "sa-east-1",
+                    "region_name": "sa-east-1",
                 },
                 {
                     "service_name": "s3",
