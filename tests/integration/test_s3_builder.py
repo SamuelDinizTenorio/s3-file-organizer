@@ -33,10 +33,10 @@ def s3_builder() -> Generator[S3Builder, None, None]:
         s3.delete_bucket(Bucket=bucket["Name"])
 
 
-class TestCreateBucket:
+class TestCreateBucketIntegration:
     """Group integration tests for S3Builder.create_bucket."""
 
-    def test_create_bucket_success(self, s3_builder: S3Builder) -> None:
+    def test_create_bucket_success_integration(self, s3_builder: S3Builder) -> None:
         # Arrange
         bucket_name = "my-bucket"
 
@@ -50,7 +50,9 @@ class TestCreateBucket:
         bucket_names = [bucket["Name"] for bucket in response.get("Buckets", [])]
         assert bucket_name in bucket_names
 
-    def test_create_bucket_already_owned_by_you(self, s3_builder: S3Builder) -> None:
+    def test_create_bucket_already_owned_by_you_integration(
+        self, s3_builder: S3Builder
+    ) -> None:
         # Arrange
         bucket_name = "meu-bucket-de-teste"
 
@@ -76,7 +78,7 @@ class TestCreateBucket:
             "-mybucket",  # Starts with a hyphen
         ],
     )
-    def test_create_bucket_invalid_names(
+    def test_create_bucket_invalid_names_integration(
         self, s3_builder: S3Builder, invalid_name: str
     ) -> None:
         # Act & Assert
@@ -89,7 +91,7 @@ class TestCreateBucket:
         )
 
 
-class TestUploadFile:
+class TestUploadFileIntegration:
     """Group integration tests for S3Builder.upload_file."""
 
     @pytest.mark.parametrize(
@@ -100,7 +102,7 @@ class TestUploadFile:
             ("folder/subfolder/file with spaces.txt", "Content with spaces"),
         ],
     )
-    def test_upload_file_success_variations(
+    def test_upload_file_success_variations_integration(
         self,
         s3_builder: S3Builder,
         tmp_path: Path,
@@ -125,7 +127,7 @@ class TestUploadFile:
         obj = s3_builder.s3.head_object(Bucket=bucket_name, Key=key)
         assert obj["ResponseMetadata"]["HTTPStatusCode"] == 200
 
-    def test_upload_file_bucket_not_found(
+    def test_upload_file_bucket_not_found_integration(
         self, s3_builder: S3Builder, tmp_path: Path
     ) -> None:
         # Arrange
@@ -140,7 +142,9 @@ class TestUploadFile:
 
         assert "NoSuchBucket" in str(exc_info.value)
 
-    def test_upload_file_file_not_found(self, s3_builder: S3Builder) -> None:
+    def test_upload_file_file_not_found_integration(
+        self, s3_builder: S3Builder
+    ) -> None:
         # Arrange
         file_path: str = "non_existent_local_file.txt"
         bucket_name: str = "upload-bucket-test"
@@ -151,7 +155,7 @@ class TestUploadFile:
             s3_builder.upload_file(filename=str(file_path), bucket=bucket_name, key=key)
 
 
-class TestListObjects:
+class TestListObjectsIntegration:
     """Group integration tests for S3Builder.list_objects against LocalStack."""
 
     @pytest.mark.parametrize(
@@ -189,7 +193,7 @@ class TestListObjects:
             ),
         ],
     )
-    def test_list_objects_success_variations(
+    def test_list_objects_success_variations_integration(
         self,
         s3_builder: S3Builder,
         created_keys: list[str],
@@ -219,7 +223,9 @@ class TestListObjects:
         retrieved_keys = [obj["Key"] for obj in results]
         assert sorted(retrieved_keys) == sorted(expected_keys)
 
-    def test_list_objects_bucket_not_found(self, s3_builder: S3Builder) -> None:
+    def test_list_objects_bucket_not_found_integration(
+        self, s3_builder: S3Builder
+    ) -> None:
         """Test listing objects from a non-existent bucket raises ClientError."""
         # Arrange
         non_existent_bucket = "non-existent-bucket-for-list"
@@ -231,10 +237,10 @@ class TestListObjects:
         assert exc_info.value.response["Error"]["Code"] == "NoSuchBucket"
 
 
-class TestCopyObject:
+class TestCopyObjectIntegration:
     """Group integration tests for S3Builder.copy_object against LocalStack."""
 
-    def test_copy_object_success(self, s3_builder: S3Builder) -> None:
+    def test_copy_object_success_integration(self, s3_builder: S3Builder) -> None:
         """Test copying an object between different keys in LocalStack."""
         # Arrange
         bucket_name = "copy-integration-bucket"
@@ -266,7 +272,9 @@ class TestCopyObject:
         obj = s3_builder.s3.get_object(Bucket=bucket_name, Key=dest_key)
         assert obj["Body"].read() == content
 
-    def test_copy_object_source_not_found(self, s3_builder: S3Builder) -> None:
+    def test_copy_object_source_not_found_integration(
+        self, s3_builder: S3Builder
+    ) -> None:
         """Test copying a non-existent object raises ClientError."""
         # Arrange
         bucket_name = "copy-error-bucket"
@@ -284,10 +292,10 @@ class TestCopyObject:
         assert exc_info.value.response["Error"]["Code"] in ("NoSuchKey", "404")
 
 
-class TestDeleteObject:
+class TestDeleteObjectIntegration:
     """Group integration tests for S3Builder.delete_object against LocalStack."""
 
-    def test_delete_object_success(self, s3_builder: S3Builder) -> None:
+    def test_delete_object_success_integration(self, s3_builder: S3Builder) -> None:
         """Test successfully deleting an existing object from an S3 bucket."""
         # Arrange
         bucket_name = "delete-integration-bucket"
@@ -312,7 +320,7 @@ class TestDeleteObject:
 
         assert exc_info.value.response["Error"]["Code"] in ("NoSuchKey", "404")
 
-    def test_delete_non_existent_object_idempotency(
+    def test_delete_non_existent_object_idempotency_integration(
         self, s3_builder: S3Builder
     ) -> None:
         """Test deleting a non-existent object succeeds due to S3 idempotency
@@ -330,7 +338,9 @@ class TestDeleteObject:
         # Assert
         assert result is True
 
-    def test_delete_object_bucket_not_found(self, s3_builder: S3Builder) -> None:
+    def test_delete_object_bucket_not_found_integration(
+        self, s3_builder: S3Builder
+    ) -> None:
         """Test deleting an object from a non-existent bucket raises ClientError."""
         # Arrange
         non_existent_bucket = "non-existent-bucket-for-delete"
@@ -342,7 +352,7 @@ class TestDeleteObject:
         assert exc_info.value.response["Error"]["Code"] == "NoSuchBucket"
 
 
-class TestMoveObject:
+class TestMoveObjectIntegration:
     """Group integration tests for S3Builder.move_object against LocalStack."""
 
     @pytest.mark.parametrize(
@@ -374,7 +384,7 @@ class TestMoveObject:
             ),
         ],
     )
-    def test_move_object_success_variations(
+    def test_move_object_success_variations_integration(
         self,
         s3_builder: S3Builder,
         source_bucket: str,
@@ -415,7 +425,9 @@ class TestMoveObject:
         dest_obj = s3_builder.s3.get_object(Bucket=dest_bucket, Key=dest_key)
         assert dest_obj["Body"].read() == file_content
 
-    def test_move_object_source_not_found(self, s3_builder: S3Builder) -> None:
+    def test_move_object_source_not_found_integration(
+        self, s3_builder: S3Builder
+    ) -> None:
         """Test moving a non-existent source object raises ClientError without creating
         destination file.
         """
