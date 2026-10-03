@@ -7,30 +7,22 @@ from file_organizer import DEFAULT_EXTENSION_RULES, FileOrganizer
 from s3_builder import S3Builder
 
 
-@pytest.fixture
-def mock_s3_builder() -> MagicMock:
-    """Fixture providing a mocked S3Builder instance."""
-    return MagicMock(spec=S3Builder)
-
-
 class TestFileOrganizerInit:
     """Unit tests for the FileOrganizer.__init__ method."""
 
-    def test_init_with_default_rules(self, mock_s3_builder: MagicMock) -> None:
+    def test_init_with_default_rules(self, s3_builder: S3Builder) -> None:
         """Ensure default rules are loaded when extension_rules is None."""
-        organizer = FileOrganizer(s3_builder=mock_s3_builder)
+        organizer = FileOrganizer(s3_builder=s3_builder)
 
-        assert organizer.s3_builder == mock_s3_builder
+        assert organizer.s3_builder == s3_builder
         assert organizer.extension_rules == DEFAULT_EXTENSION_RULES
 
-    def test_init_with_custom_rules(self, mock_s3_builder: MagicMock) -> None:
+    def test_init_with_custom_rules(self, s3_builder: S3Builder) -> None:
         """Ensure custom rules override the default extension mapping dictionary."""
         custom_rules = {".pdf": "custom_docs/", ".csv": "custom_data/"}
-        organizer = FileOrganizer(
-            s3_builder=mock_s3_builder, extension_rules=custom_rules
-        )
+        organizer = FileOrganizer(s3_builder=s3_builder, extension_rules=custom_rules)
 
-        assert organizer.s3_builder == mock_s3_builder
+        assert organizer.s3_builder == s3_builder
         assert organizer.extension_rules == custom_rules
 
 
@@ -52,15 +44,14 @@ class TestGetTargetPrefix:
     )
     def test_get_target_prefix(
         self,
-        mock_s3_builder: MagicMock,
+        file_organizer: FileOrganizer,
         source_key: str,
         expected_prefix: str | None,
     ) -> None:
         """Validate destination folder resolution based on extension
         and case insensitivity.
         """
-        organizer = FileOrganizer(s3_builder=mock_s3_builder)
-        assert organizer.get_target_prefix(source_key) == expected_prefix
+        assert file_organizer.get_target_prefix(source_key) == expected_prefix
 
 
 class TestResolveDestinationKey:
@@ -83,7 +74,7 @@ class TestResolveDestinationKey:
     )
     def test_resolve_destination_key(
         self,
-        mock_s3_builder: MagicMock,
+        file_organizer: FileOrganizer,
         source_key: str,
         target_prefix: str,
         expected_destination: str,
@@ -91,8 +82,7 @@ class TestResolveDestinationKey:
         """Validate S3 destination key construction handling prefix
         formatting variations.
         """
-        organizer = FileOrganizer(s3_builder=mock_s3_builder)
-        result = organizer.resolve_destination_key(
+        result = file_organizer.resolve_destination_key(
             source_key=source_key,
             target_prefix=target_prefix,
         )
@@ -104,7 +94,11 @@ class TestOrganizeBucket:
     batch execution flows.
     """
 
-    def test_organize_bucket_happy_path(self, mock_s3_builder: MagicMock) -> None:
+    def test_organize_bucket_happy_path(
+        self,
+        file_organizer: FileOrganizer,
+        mock_s3_builder: MagicMock,
+    ) -> None:
         """Verify that all recognized files in the bucket are
         correctly routed and moved.
         """
@@ -114,8 +108,9 @@ class TestOrganizeBucket:
             {"Key": "inbox/photo.png"},
         ]
 
-        organizer = FileOrganizer(s3_builder=mock_s3_builder)
-        stats = organizer.organize_bucket(bucket="my-bucket", source_prefix="inbox/")
+        stats = file_organizer.organize_bucket(
+            bucket="my-bucket", source_prefix="inbox/"
+        )
 
         # Assert execution statistics
         assert stats == {"moved": 3, "skipped": 0, "failed": 0}
@@ -152,15 +147,16 @@ class TestOrganizeBucket:
         )
 
     def test_organize_bucket_unmapped_extension_with_default_fallback(
-        self, mock_s3_builder: MagicMock
+        self,
+        file_organizer: FileOrganizer,
+        mock_s3_builder: MagicMock,
     ) -> None:
         """Verify that files with unmapped extensions are routed to
         the default fallback folder.
         """
         mock_s3_builder.list_objects.return_value = [{"Key": "archive.xyz"}]
 
-        organizer = FileOrganizer(s3_builder=mock_s3_builder)
-        stats = organizer.organize_bucket(
+        stats = file_organizer.organize_bucket(
             bucket="my-bucket", uncategorized_prefix="others/"
         )
 
@@ -173,21 +169,26 @@ class TestOrganizeBucket:
         )
 
     def test_organize_bucket_unmapped_extension_without_fallback(
-        self, mock_s3_builder: MagicMock
+        self,
+        file_organizer: FileOrganizer,
+        mock_s3_builder: MagicMock,
     ) -> None:
         """Verify that unmapped files are skipped when uncategorized_prefix
         is explicitly set to None.
         """
         mock_s3_builder.list_objects.return_value = [{"Key": "unknown.xyz"}]
 
-        organizer = FileOrganizer(s3_builder=mock_s3_builder)
-        stats = organizer.organize_bucket(bucket="my-bucket", uncategorized_prefix=None)
+        stats = file_organizer.organize_bucket(
+            bucket="my-bucket", uncategorized_prefix=None
+        )
 
         assert stats == {"moved": 0, "skipped": 1, "failed": 0}
         mock_s3_builder.move_object.assert_not_called()
 
     def test_organize_bucket_skips_already_organized_files(
-        self, mock_s3_builder: MagicMock
+        self,
+        file_organizer: FileOrganizer,
+        mock_s3_builder: MagicMock,
     ) -> None:
         """Verify that files already residing in their target paths are skipped
         without redundant moves.
@@ -197,8 +198,7 @@ class TestOrganizeBucket:
             {"Key": "data/metrics.csv"},
         ]
 
-        organizer = FileOrganizer(s3_builder=mock_s3_builder)
-        stats = organizer.organize_bucket(bucket="my-bucket")
+        stats = file_organizer.organize_bucket(bucket="my-bucket")
 
         assert stats == {"moved": 0, "skipped": 2, "failed": 0}
         mock_s3_builder.move_object.assert_not_called()
@@ -212,19 +212,25 @@ class TestOrganizeBucket:
         ],
     )
     def test_organize_bucket_skips_invalid_keys_and_directories(
-        self, mock_s3_builder: MagicMock, invalid_object: ObjectTypeDef
+        self,
+        file_organizer: FileOrganizer,
+        mock_s3_builder: MagicMock,
+        invalid_object: ObjectTypeDef,
     ) -> None:
-        """Verify that directory markers and missing/empty keys are safely skipped."""
+        """Verify that directory markers and missing/empty keys are
+        safely skipped.
+        """
         mock_s3_builder.list_objects.return_value = [invalid_object]
 
-        organizer = FileOrganizer(s3_builder=mock_s3_builder)
-        stats = organizer.organize_bucket(bucket="my-bucket")
+        stats = file_organizer.organize_bucket(bucket="my-bucket")
 
         assert stats == {"moved": 0, "skipped": 1, "failed": 0}
         mock_s3_builder.move_object.assert_not_called()
 
     def test_organize_bucket_batch_resilience_on_error(
-        self, mock_s3_builder: MagicMock
+        self,
+        file_organizer: FileOrganizer,
+        mock_s3_builder: MagicMock,
     ) -> None:
         """Verify batch processing continues even when an individual move
         operation raises an error.
@@ -242,19 +248,21 @@ class TestOrganizeBucket:
             None,
         ]
 
-        organizer = FileOrganizer(s3_builder=mock_s3_builder)
-        stats = organizer.organize_bucket(bucket="my-bucket")
+        stats = file_organizer.organize_bucket(bucket="my-bucket")
 
         # Verify execution continues past errors and metrics accurately record state
         assert stats == {"moved": 2, "skipped": 0, "failed": 1}
         assert mock_s3_builder.move_object.call_count == 3
 
-    def test_organize_bucket_empty_bucket(self, mock_s3_builder: MagicMock) -> None:
+    def test_organize_bucket_empty_bucket(
+        self,
+        file_organizer: FileOrganizer,
+        mock_s3_builder: MagicMock,
+    ) -> None:
         """Verify graceful return when list_objects yields no objects."""
         mock_s3_builder.list_objects.return_value = []
 
-        organizer = FileOrganizer(s3_builder=mock_s3_builder)
-        stats = organizer.organize_bucket(bucket="my-bucket")
+        stats = file_organizer.organize_bucket(bucket="my-bucket")
 
         assert stats == {"moved": 0, "skipped": 0, "failed": 0}
         mock_s3_builder.move_object.assert_not_called()
