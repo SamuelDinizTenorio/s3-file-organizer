@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Generator, cast
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,20 +8,6 @@ from botocore.exceptions import ClientError
 from mypy_boto3_s3.type_defs import ObjectTypeDef
 
 from s3_builder import S3Builder
-
-
-@pytest.fixture
-def mock_boto_client() -> Generator[MagicMock, None, None]:
-    """Fixture to mock boto3.client for S3Builder initialization."""
-    with patch("s3_builder.boto3.client") as mock_client:
-        mock_instance = MagicMock()
-        mock_client.return_value = mock_instance
-        yield mock_client
-
-
-@pytest.fixture
-def s3_builder(mock_boto_client: MagicMock) -> S3Builder:
-    return S3Builder()
 
 
 class TestInit:
@@ -163,6 +149,7 @@ class TestCreateBucket:
     def test_create_bucket_success_and_warnings(
         self,
         s3_builder: S3Builder,
+        mock_s3_client: MagicMock,
         caplog: pytest.LogCaptureFixture,
         side_effect: Exception | None,
         expected_log_level: int,
@@ -171,8 +158,7 @@ class TestCreateBucket:
         # Arrange
         caplog.set_level(logging.INFO)
         bucket_name: str = "my-bucket"
-        mock_s3 = cast(MagicMock, s3_builder.s3_client)
-        mock_s3.create_bucket.side_effect = side_effect
+        mock_s3_client.create_bucket.side_effect = side_effect
 
         expected_log: tuple[str, int, str] = (
             "s3_builder",
@@ -184,7 +170,7 @@ class TestCreateBucket:
         result = s3_builder.create_bucket(bucket_name=bucket_name)
 
         # Assert
-        mock_s3.create_bucket.assert_called_once_with(Bucket=bucket_name)
+        mock_s3_client.create_bucket.assert_called_once_with(Bucket=bucket_name)
         assert result is True
         assert expected_log in caplog.record_tuples
 
@@ -217,6 +203,7 @@ class TestCreateBucket:
     def test_create_bucket_errors(
         self,
         s3_builder: S3Builder,
+        mock_s3_client: MagicMock,
         caplog: pytest.LogCaptureFixture,
         exception_instance: Exception,
         match_pattern: str,
@@ -224,8 +211,7 @@ class TestCreateBucket:
     ) -> None:
         # Arrange
         bucket_name: str = "my-bucket"
-        mock_s3 = cast(MagicMock, s3_builder.s3_client)
-        mock_s3.create_bucket.side_effect = exception_instance
+        mock_s3_client.create_bucket.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (
             "s3_builder",
@@ -237,7 +223,7 @@ class TestCreateBucket:
         with pytest.raises(type(exception_instance), match=match_pattern):
             s3_builder.create_bucket(bucket_name=bucket_name)
 
-        mock_s3.create_bucket.assert_called_once_with(Bucket=bucket_name)
+        mock_s3_client.create_bucket.assert_called_once_with(Bucket=bucket_name)
         assert expected_log in caplog.record_tuples
 
 
@@ -255,6 +241,7 @@ class TestUploadFile:
     def test_upload_file_success_variations(
         self,
         s3_builder: S3Builder,
+        mock_s3_client: MagicMock,
         caplog: pytest.LogCaptureFixture,
         filename: str,
         bucket: str,
@@ -262,7 +249,6 @@ class TestUploadFile:
     ) -> None:
         # Arrange
         caplog.set_level(logging.INFO)
-        mock_s3 = cast(MagicMock, s3_builder.s3_client)
 
         expected_log: tuple[str, int, str] = (
             "s3_builder",
@@ -274,7 +260,7 @@ class TestUploadFile:
         result = s3_builder.upload_file(filename=filename, bucket=bucket, key=key)
 
         # Assert
-        mock_s3.upload_file.assert_called_once_with(
+        mock_s3_client.upload_file.assert_called_once_with(
             Filename=filename, Bucket=bucket, Key=key
         )
         assert result is True
@@ -320,6 +306,7 @@ class TestUploadFile:
     def test_upload_file_errors(
         self,
         s3_builder: S3Builder,
+        mock_s3_client: MagicMock,
         caplog: pytest.LogCaptureFixture,
         exception_instance: Exception,
         match_pattern: str,
@@ -330,8 +317,7 @@ class TestUploadFile:
         bucket: str = "my-bucket"
         key: str = "my-key"
 
-        mock_s3 = cast(MagicMock, s3_builder.s3_client)
-        mock_s3.upload_file.side_effect = exception_instance
+        mock_s3_client.upload_file.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (
             "s3_builder",
@@ -343,7 +329,7 @@ class TestUploadFile:
         with pytest.raises(type(exception_instance), match=match_pattern):
             s3_builder.upload_file(filename=filename, bucket=bucket, key=key)
 
-        mock_s3.upload_file.assert_called_once_with(
+        mock_s3_client.upload_file.assert_called_once_with(
             Filename=filename, Bucket=bucket, Key=key
         )
         assert expected_log in caplog.record_tuples
@@ -404,6 +390,7 @@ class TestListObjects:
     def test_list_objects_success(
         self,
         s3_builder: S3Builder,
+        mock_s3_client: MagicMock,
         caplog: pytest.LogCaptureFixture,
         bucket: str,
         prefix: str,
@@ -414,9 +401,8 @@ class TestListObjects:
         """Test successful execution of list_objects across various scenarios."""
         # Arrange
         caplog.set_level(logging.INFO)
-        mock_s3 = cast(MagicMock, s3_builder.s3_client)
         mock_paginator = MagicMock()
-        mock_s3.get_paginator.return_value = mock_paginator
+        mock_s3_client.get_paginator.return_value = mock_paginator
         mock_paginator.paginate.return_value = paginator_pages
 
         expected_log: tuple[str, int, str] = (
@@ -433,7 +419,7 @@ class TestListObjects:
         result = s3_builder.list_objects(**kwargs)
 
         # Assert
-        mock_s3.get_paginator.assert_called_once_with("list_objects_v2")
+        mock_s3_client.get_paginator.assert_called_once_with("list_objects_v2")
         mock_paginator.paginate.assert_called_once_with(
             Bucket=bucket, Prefix=prefix or ""
         )
@@ -471,6 +457,7 @@ class TestListObjects:
     def test_list_objects_errors(
         self,
         s3_builder: S3Builder,
+        mock_s3_client: MagicMock,
         caplog: pytest.LogCaptureFixture,
         exception_instance: Exception,
         match_pattern: str,
@@ -479,9 +466,8 @@ class TestListObjects:
         """Test exception handling and logging behavior for list_objects failures."""
         # Arrange
         bucket: str = "my-bucket"
-        mock_s3 = cast(MagicMock, s3_builder.s3_client)
         mock_paginator = MagicMock()
-        mock_s3.get_paginator.return_value = mock_paginator
+        mock_s3_client.get_paginator.return_value = mock_paginator
         mock_paginator.paginate.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (
@@ -494,7 +480,7 @@ class TestListObjects:
         with pytest.raises(type(exception_instance), match=match_pattern):
             s3_builder.list_objects(bucket=bucket)
 
-        mock_s3.get_paginator.assert_called_once_with("list_objects_v2")
+        mock_s3_client.get_paginator.assert_called_once_with("list_objects_v2")
         mock_paginator.paginate.assert_called_once_with(Bucket=bucket, Prefix="")
         assert expected_log in caplog.record_tuples
 
@@ -514,6 +500,7 @@ class TestCopyObject:
     def test_copy_object_success(
         self,
         s3_builder: S3Builder,
+        mock_s3_client: MagicMock,
         caplog: pytest.LogCaptureFixture,
         source_bucket: str,
         source_key: str,
@@ -523,7 +510,6 @@ class TestCopyObject:
         """Test successful execution of copy_object across various scenarios."""
         # Arrange
         caplog.set_level(logging.INFO)
-        mock_s3 = cast(MagicMock, s3_builder.s3_client)
 
         expected_log: tuple[str, int, str] = (
             "s3_builder",
@@ -541,7 +527,7 @@ class TestCopyObject:
         )
 
         # Assert
-        mock_s3.copy_object.assert_called_once_with(
+        mock_s3_client.copy_object.assert_called_once_with(
             CopySource={"Bucket": source_bucket, "Key": source_key},
             Bucket=dest_bucket,
             Key=dest_key,
@@ -580,6 +566,7 @@ class TestCopyObject:
     def test_copy_object_errors(
         self,
         s3_builder: S3Builder,
+        mock_s3_client: MagicMock,
         caplog: pytest.LogCaptureFixture,
         exception_instance: Exception,
         match_pattern: str,
@@ -592,8 +579,7 @@ class TestCopyObject:
         dest_bucket = "dest-bkt"
         dest_key = "dst-key"
 
-        mock_s3 = cast(MagicMock, s3_builder.s3_client)
-        mock_s3.copy_object.side_effect = exception_instance
+        mock_s3_client.copy_object.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (
             "s3_builder",
@@ -610,7 +596,7 @@ class TestCopyObject:
                 dest_key=dest_key,
             )
 
-        mock_s3.copy_object.assert_called_once_with(
+        mock_s3_client.copy_object.assert_called_once_with(
             CopySource={"Bucket": source_bucket, "Key": source_key},
             Bucket=dest_bucket,
             Key=dest_key,
@@ -632,6 +618,7 @@ class TestDeleteObject:
     def test_delete_object_success(
         self,
         s3_builder: S3Builder,
+        mock_s3_client: MagicMock,
         caplog: pytest.LogCaptureFixture,
         bucket: str,
         key: str,
@@ -641,7 +628,6 @@ class TestDeleteObject:
         """
         # Arrange
         caplog.set_level(logging.INFO)
-        mock_s3 = cast(MagicMock, s3_builder.s3_client)
 
         expected_log: tuple[str, int, str] = (
             "s3_builder",
@@ -653,7 +639,7 @@ class TestDeleteObject:
         result = s3_builder.delete_object(bucket=bucket, key=key)
 
         # Assert
-        mock_s3.delete_object.assert_called_once_with(Bucket=bucket, Key=key)
+        mock_s3_client.delete_object.assert_called_once_with(Bucket=bucket, Key=key)
         assert result is True
         assert expected_log in caplog.record_tuples
 
@@ -688,6 +674,7 @@ class TestDeleteObject:
     def test_delete_object_errors(
         self,
         s3_builder: S3Builder,
+        mock_s3_client: MagicMock,
         caplog: pytest.LogCaptureFixture,
         exception_instance: Exception,
         match_pattern: str,
@@ -698,8 +685,7 @@ class TestDeleteObject:
         bucket = "my-bucket"
         key = "my-key"
 
-        mock_s3 = cast(MagicMock, s3_builder.s3_client)
-        mock_s3.delete_object.side_effect = exception_instance
+        mock_s3_client.delete_object.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (
             "s3_builder",
@@ -711,7 +697,7 @@ class TestDeleteObject:
         with pytest.raises(type(exception_instance), match=match_pattern):
             s3_builder.delete_object(bucket=bucket, key=key)
 
-        mock_s3.delete_object.assert_called_once_with(Bucket=bucket, Key=key)
+        mock_s3_client.delete_object.assert_called_once_with(Bucket=bucket, Key=key)
         assert expected_log in caplog.record_tuples
 
 
