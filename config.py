@@ -1,6 +1,6 @@
 """Configuration module for environment settings and logging initialization.
 
-This module loads environment variables from a `.env` file, provides fallback
+This module loads environment variables from a .env file, provides fallback
 defaults for LocalStack AWS S3 development, and configures centralized application
 logging to output to both standard console streams and persistent log files.
 """
@@ -22,7 +22,8 @@ AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "test")
 AWS_REGION: str = os.getenv("AWS_REGION", "us-east-1")
 
 # Default relative filepath for output logs
-LOG_FILE_PATH: str = "s3_file_organizer.log"
+LOG_DIR = "logs"
+LOG_FILE_PATH: str = os.path.join(LOG_DIR, "s3_file_organizer.log")
 
 
 def setup_logging(log_file: str = LOG_FILE_PATH) -> None:
@@ -37,7 +38,7 @@ def setup_logging(log_file: str = LOG_FILE_PATH) -> None:
     Args:
         log_file (str, optional): Filepath where the output log file will be saved.
             If a nested directory path is supplied, parent folders are automatically
-            created. Defaults to `LOG_FILE_PATH` ("s3_file_organizer.log").
+            created. Defaults to `LOG_FILE_PATH` ("logs/s3_file_organizer.log").
 
     Returns:
         None
@@ -48,7 +49,7 @@ def setup_logging(log_file: str = LOG_FILE_PATH) -> None:
 
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s - [%(levelname)s] - %(name)s - %(message)s",
+        format="%(asctime)s [%(levelname)s] - %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         handlers=[
             logging.FileHandler(log_file, encoding="utf-8"),
