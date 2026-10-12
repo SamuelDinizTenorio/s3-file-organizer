@@ -66,7 +66,9 @@ def mock_s3_builder() -> MagicMock:
     Returns:
         MagicMock: A mocked instance constrained by the S3Builder interface spec.
     """
-    return MagicMock(spec=S3Builder)
+    mock_builder = MagicMock(spec=S3Builder)
+    mock_builder.s3_client = MagicMock()
+    return mock_builder
 
 
 @pytest.fixture
