@@ -3,20 +3,23 @@
 .env
 !.env.example
 
-# 🐍 Python & Caches
+# Python & Caches
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .mypy_cache/
 .coverage
 
-# 🐳 LocalStack / Persistent Storage
+# LocalStack / Persistent Storage
 volume/
 
-# 🛠️ IDEs & Editors
+# IDEs & Editors
 .vscode/
 .idea/
 
-# 🖥️ OS Files
+# OS Files
 .DS_Store
 Thumbs.db
+
+# Logs
+/logs
