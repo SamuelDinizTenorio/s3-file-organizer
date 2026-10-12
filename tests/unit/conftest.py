@@ -1,8 +1,8 @@
 """Pytest configuration and shared test fixtures module.
 
-This module defines reusable test fixtures for S3Builder and FileOrganizer
-unit test suites, providing mocked AWS SDK clients, typed dependencies,
-and isolated target instances.
+This module defines reusable test fixtures for S3Builder, FileOrganizer,
+and CLI unit test suites, providing mocked AWS SDK clients, typed dependencies,
+and isolated CLI module mocks.
 """
 
 from typing import Generator, cast
@@ -12,6 +12,10 @@ import pytest
 
 from file_organizer import FileOrganizer
 from s3_builder import S3Builder
+
+# =====================================================================
+# 1. S3 Infrastructure & Low-Level Boto3 Client Mocks
+# =====================================================================
 
 
 @pytest.fixture
@@ -56,6 +60,11 @@ def mock_s3_client(s3_builder: S3Builder) -> MagicMock:
     return cast(MagicMock, s3_builder.s3_client)
 
 
+# =====================================================================
+# 2. Business Logic Mocks & Instances (FileOrganizer & S3Builder Mocks)
+# =====================================================================
+
+
 @pytest.fixture
 def mock_s3_builder() -> MagicMock:
     """Provide a standalone MagicMock matching the S3Builder specification.
@@ -79,3 +88,41 @@ def file_organizer(mock_s3_builder: MagicMock) -> FileOrganizer:
         FileOrganizer: A ready-to-test FileOrganizer instance.
     """
     return FileOrganizer(s3_builder=mock_s3_builder)
+
+
+# =====================================================================
+# 3. CLI Module Mocks (Command-Line Interface patch fixtures)
+# =====================================================================
+
+
+@pytest.fixture
+def mock_upload_log() -> Generator[MagicMock, None, None]:
+    """Mock the upload_log_to_s3 utility function for CLI tests.
+
+    Yields:
+        MagicMock: The patched upload_log_to_s3 mock object.
+    """
+    with patch("cli.upload_log_to_s3") as mock_patch:
+        yield mock_patch
+
+
+@pytest.fixture
+def mock_file_organizer_cls() -> Generator[MagicMock, None, None]:
+    """Mock the FileOrganizer class for CLI tests.
+
+    Yields:
+        MagicMock: The patched FileOrganizer class mock object.
+    """
+    with patch("cli.FileOrganizer") as mock_patch:
+        yield mock_patch
+
+
+@pytest.fixture
+def mock_setup_logging() -> Generator[MagicMock, None, None]:
+    """Mock the setup_logging configuration function for CLI tests.
+
+    Yields:
+        MagicMock: The patched setup_logging mock object.
+    """
+    with patch("cli.setup_logging") as mock_patch:
+        yield mock_patch
