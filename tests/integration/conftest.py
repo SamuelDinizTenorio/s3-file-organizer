@@ -79,3 +79,18 @@ def integration_file_organizer(integration_s3_builder: S3Builder) -> FileOrganiz
         FileOrganizer: A FileOrganizer instance configured for integration testing.
     """
     return FileOrganizer(s3_builder=integration_s3_builder)
+
+
+@pytest.fixture
+def log_bucket(integration_s3_builder: S3Builder) -> str:
+    """Ensure the target log bucket exists in LocalStack for integration tests.
+
+    Returns:
+        str: The name of the log bucket used by the CLI application.
+    """
+    bucket_name = "my-logs-localstack"
+    try:
+        integration_s3_builder.s3_client.head_bucket(Bucket=bucket_name)
+    except Exception:
+        integration_s3_builder.create_bucket(bucket_name=bucket_name)
+    return bucket_name
