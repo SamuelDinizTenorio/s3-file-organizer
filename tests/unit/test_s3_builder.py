@@ -359,7 +359,8 @@ class TestListObjects:
                     },
                 ],
                 ["file1.txt", "file2.pdf", "file3.png"],
-                "Successfully listed 3 object(s) in bucket 'my-bucket' with prefix ''",
+                "Successfully listed 3 object(s) in bucket 'my-bucket' "
+                "(without prefix)",
             ),
             # Case 2: Filtering by a specific key prefix
             (
@@ -373,8 +374,8 @@ class TestListObjects:
                     },
                 ],
                 ["documents/report.pdf"],
-                "Successfully listed 1 object(s) in bucket "
-                "'my-bucket' with prefix 'documents/'",
+                "Successfully listed 1 object(s) in bucket 'my-bucket' "
+                "with prefix 'documents/'",
             ),
             # Case 3: Empty bucket (missing 'Contents' key in API response)
             (
@@ -382,8 +383,8 @@ class TestListObjects:
                 None,
                 [{}],
                 [],
-                "Successfully listed 0 object(s) in bucket "
-                "'empty-bucket' with prefix ''",
+                "Successfully listed 0 object(s) in bucket 'empty-bucket' "
+                "(without prefix)",
             ),
         ],
     )
@@ -393,8 +394,8 @@ class TestListObjects:
         mock_s3_client: MagicMock,
         caplog: pytest.LogCaptureFixture,
         bucket: str,
-        prefix: str,
-        paginator_pages: ObjectTypeDef,
+        prefix: str | None,
+        paginator_pages: object,
         expected_keys: list[str],
         expected_log_msg: str,
     ) -> None:
@@ -420,9 +421,13 @@ class TestListObjects:
 
         # Assert
         mock_s3_client.get_paginator.assert_called_once_with("list_objects_v2")
-        mock_paginator.paginate.assert_called_once_with(
-            Bucket=bucket, Prefix=prefix or ""
-        )
+
+        # Dynamically validates whether pagination_kwargs was constructed correctly.
+        expected_paginate_kwargs = {"Bucket": bucket}
+        if prefix is not None:
+            expected_paginate_kwargs["Prefix"] = prefix
+
+        mock_paginator.paginate.assert_called_once_with(**expected_paginate_kwargs)
         assert [obj["Key"] for obj in result] == expected_keys
         assert expected_log in caplog.record_tuples
 
@@ -481,7 +486,7 @@ class TestListObjects:
             s3_builder.list_objects(bucket=bucket)
 
         mock_s3_client.get_paginator.assert_called_once_with("list_objects_v2")
-        mock_paginator.paginate.assert_called_once_with(Bucket=bucket, Prefix="")
+        mock_paginator.paginate.assert_called_once_with(Bucket=bucket)
         assert expected_log in caplog.record_tuples
 
 

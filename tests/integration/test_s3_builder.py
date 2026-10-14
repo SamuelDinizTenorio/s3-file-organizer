@@ -155,37 +155,50 @@ class TestListObjectsIntegration:
     """Group integration tests for S3Builder.list_objects against LocalStack."""
 
     @pytest.mark.parametrize(
-        "created_keys, search_prefix, expected_keys",
+        "created_keys, search_prefix, expected_keys, use_default_prefix",
         [
-            # Case 1: List all objects when no prefix is provided
+            # Case 1: List all objects omitting the prefix argument
+            # (tests default None behavior)
+            (
+                ["file1.txt", "file2.pdf", "image.png"],
+                None,
+                ["file1.txt", "file2.pdf", "image.png"],
+                True,
+            ),
+            # Case 2: List all objects with an explicit empty string prefix
             (
                 ["file1.txt", "file2.pdf", "image.png"],
                 "",
                 ["file1.txt", "file2.pdf", "image.png"],
+                False,
             ),
-            # Case 2: Filter objects by folder-like prefix
+            # Case 3: Filter objects by folder-like prefix
             (
                 ["documents/report1.pdf", "documents/report2.pdf", "images/photo.png"],
                 "documents/",
                 ["documents/report1.pdf", "documents/report2.pdf"],
+                False,
             ),
-            # Case 3: Filter by partial filename prefix
+            # Case 4: Filter by partial filename prefix
             (
                 ["logs_2026_01.txt", "logs_2026_02.txt", "notes.txt"],
                 "logs_2026",
                 ["logs_2026_01.txt", "logs_2026_02.txt"],
+                False,
             ),
-            # Case 4: Search with a prefix that matches no objects
+            # Case 5: Search with a prefix that matches no objects
             (
                 ["file1.txt", "file2.txt"],
                 "non_existing_folder/",
                 [],
+                False,
             ),
-            # Case 5: Empty bucket listing
+            # Case 6: Empty bucket listing without passing prefix
             (
                 [],
-                "",
+                None,
                 [],
+                True,
             ),
         ],
     )
@@ -194,10 +207,13 @@ class TestListObjectsIntegration:
         integration_s3_builder: S3Builder,
         test_bucket: str,
         created_keys: list[str],
-        search_prefix: str,
+        search_prefix: str | None,
         expected_keys: list[str],
+        use_default_prefix: bool,
     ) -> None:
-        """Verify listing objects in an S3 bucket with various prefix filters."""
+        """Verify listing objects in an S3 bucket with various prefix filters and
+        None handling against LocalStack.
+        """
         # Arrange: Upload dummy objects directly to the isolated test bucket
         for key in created_keys:
             integration_s3_builder.s3_client.put_object(
@@ -206,10 +222,13 @@ class TestListObjectsIntegration:
                 Body=b"Integration test content",
             )
 
-        # Act
-        results = integration_s3_builder.list_objects(
-            bucket=test_bucket, prefix=search_prefix
-        )
+        # Act: Test calling without the prefix parameter vs passing it explicitly
+        if use_default_prefix:
+            results = integration_s3_builder.list_objects(bucket=test_bucket)
+        else:
+            results = integration_s3_builder.list_objects(
+                bucket=test_bucket, prefix=search_prefix
+            )
 
         # Assert
         retrieved_keys = [obj["Key"] for obj in results if obj.get("Key")]
@@ -219,7 +238,7 @@ class TestListObjectsIntegration:
         self, integration_s3_builder: S3Builder
     ) -> None:
         """Verify listing objects from a non-existent bucket raises ClientError
-        with NoSuchBucket code.
+        with NoSuchBucket code against LocalStack.
         """
         # Arrange: Generates a name with a guaranteed non-existent UUID.
         non_existent_bucket = f"non-existent-bucket-{uuid.uuid4().hex[:8]}"

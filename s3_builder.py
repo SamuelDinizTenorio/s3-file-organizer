@@ -126,7 +126,9 @@ class S3Builder:
             )
             raise
 
-    def list_objects(self, bucket: str, prefix: str = "") -> list[ObjectTypeDef]:
+    def list_objects(
+        self, bucket: str, prefix: str | None = None
+    ) -> list[ObjectTypeDef]:
         """List objects in an S3 bucket with an optional prefix.
 
         Args:
@@ -134,7 +136,8 @@ class S3Builder:
             prefix (str, optional): Key prefix to filter objects. Defaults to "".
 
         Returns:
-            list[dict[str, Any]]: List of dictionary metadata representing S3 objects.
+            list[dict[str, Any]]: List of dictionary metadata representing
+            S3 objects.
 
         Raises:
             ClientError: If an error occurs during interaction with S3 API.
@@ -142,17 +145,22 @@ class S3Builder:
         """
         try:
             paginator = self.s3_client.get_paginator("list_objects_v2")
-            objects: list[ObjectTypeDef] = []
 
-            for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+            pagination_kwargs: dict[str, str] = {"Bucket": bucket}
+            if prefix:
+                pagination_kwargs["Prefix"] = prefix
+
+            objects: list[ObjectTypeDef] = []
+            for page in paginator.paginate(**pagination_kwargs):  # type: ignore[arg-type]
                 if "Contents" in page:
                     objects.extend(page["Contents"])
 
+            prefix_info = f" with prefix '{prefix}'" if prefix else " (without prefix)"
             logger.info(
-                "Successfully listed %d object(s) in bucket '%s' with prefix '%s'",
+                "Successfully listed %d object(s) in bucket '%s'%s",
                 len(objects),
                 bucket,
-                prefix,
+                prefix_info,
             )
             return objects
         except ClientError as ex:
