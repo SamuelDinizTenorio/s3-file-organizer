@@ -43,10 +43,8 @@ class TestUploadLogToS3:
             patch("utils.LOG_FILE_PATH", str(log_file)),
             patch("utils.datetime") as mock_datetime,
         ):
-            mock_datetime.datetime.now.return_value.strftime.side_effect = (
-                lambda fmt: "2026"
-                if fmt == "%Y"
-                else ("10" if fmt == "%m" else "20261012_120000")
+            mock_datetime.datetime.now.return_value.strftime.side_effect = lambda fmt: (
+                "2026" if fmt == "%Y" else ("10" if fmt == "%m" else "20261012_120000")
             )
 
             # Act
