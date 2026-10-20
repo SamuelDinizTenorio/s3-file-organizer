@@ -1,12 +1,22 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "s3-builder"
+name = "s3-file-organizer"
 version = "0.1.0"
-description = "Builder utility for provisioning AWS S3."
+description = "Builder utility for provisioning AWS S3 and automated file organization."
 requires-python = ">=3.10"
+dependencies = [
+    "boto3>=1.43.0",
+    "python-dotenv>=1.0.0",
+    "urllib3>=2.0.0",
+    "streamlit>=1.66.0",
+]
+
+# Setuptools configuration for the src-layout
+[tool.setuptools.packages.find]
+where = ["src"]
 
 # Ruff Configuration (Linter and Formatter)
 [tool.ruff]
@@ -20,7 +30,7 @@ select = ["E", "F", "I", "W"] # Linter rules (pycodestyle, pyflakes, isort)
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-pythonpath = ["."]
+pythonpath = ["src"]  
 markers = [
     "integration: marks integration tests that depend on LocalStack",
 ]
@@ -30,6 +40,8 @@ markers = [
 python_version = "3.10"
 strict = true
 ignore_missing_imports = true
+mypy_path = "src"
+explicit_package_bases = true
 
 [[tool.mypy.overrides]]
 module = "tests.*"

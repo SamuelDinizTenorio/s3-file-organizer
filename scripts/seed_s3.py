@@ -4,18 +4,19 @@ import logging
 import sys
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+# Points to the 'src' folder within the project root
+ROOT_DIR = Path(__file__).resolve().parent.parent / "src"
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from config import (  # noqa: E402
+from s3_file_organizer.config import (  # noqa: E402
     AWS_ACCESS_KEY_ID,
     AWS_ENDPOINT_URL,
     AWS_REGION,
     AWS_SECRET_ACCESS_KEY,
     setup_logging,
 )
-from s3_builder import S3Builder  # noqa: E402
+from s3_file_organizer.s3_builder import S3Builder  # noqa: E402
 
 setup_logging()
 logger = logging.getLogger(__name__)

@@ -1,5 +1,5 @@
-from file_organizer import FileOrganizer
-from s3_builder import S3Builder
+from s3_file_organizer.file_organizer import FileOrganizer
+from s3_file_organizer.s3_builder import S3Builder
 
 
 class TestFileOrganizerHelpersIntegration:

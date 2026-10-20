@@ -6,8 +6,7 @@ import pytest
 from boto3.exceptions import S3UploadFailedError
 from botocore.exceptions import ClientError
 from mypy_boto3_s3.type_defs import ObjectTypeDef
-
-from s3_builder import S3Builder
+from s3_file_organizer.s3_builder import S3Builder
 
 
 class TestInit:
@@ -104,7 +103,7 @@ class TestInit:
         mock_boto_client.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (
-            "s3_builder",
+            "s3_file_organizer.s3_builder",
             logging.ERROR,
             expected_log_msg,
         )
@@ -161,7 +160,7 @@ class TestCreateBucket:
         mock_s3_client.create_bucket.side_effect = side_effect
 
         expected_log: tuple[str, int, str] = (
-            "s3_builder",
+            "s3_file_organizer.s3_builder",
             expected_log_level,
             expected_log_msg,
         )
@@ -214,7 +213,7 @@ class TestCreateBucket:
         mock_s3_client.create_bucket.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (
-            "s3_builder",
+            "s3_file_organizer.s3_builder",
             logging.ERROR,
             expected_log_msg,
         )
@@ -251,7 +250,7 @@ class TestUploadFile:
         caplog.set_level(logging.INFO)
 
         expected_log: tuple[str, int, str] = (
-            "s3_builder",
+            "s3_file_organizer.s3_builder",
             logging.INFO,
             f"Successfully uploaded {filename} to {bucket}/{key}",
         )
@@ -320,7 +319,7 @@ class TestUploadFile:
         mock_s3_client.upload_file.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (
-            "s3_builder",
+            "s3_file_organizer.s3_builder",
             logging.ERROR,
             expected_log_msg,
         )
@@ -407,7 +406,7 @@ class TestListObjects:
         mock_paginator.paginate.return_value = paginator_pages
 
         expected_log: tuple[str, int, str] = (
-            "s3_builder",
+            "s3_file_organizer.s3_builder",
             logging.INFO,
             expected_log_msg,
         )
@@ -476,7 +475,7 @@ class TestListObjects:
         mock_paginator.paginate.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (
-            "s3_builder",
+            "s3_file_organizer.s3_builder",
             logging.ERROR,
             expected_log_msg,
         )
@@ -517,7 +516,7 @@ class TestCopyObject:
         caplog.set_level(logging.INFO)
 
         expected_log: tuple[str, int, str] = (
-            "s3_builder",
+            "s3_file_organizer.s3_builder",
             logging.INFO,
             f"Successfully copied {source_bucket}/{source_key} to "
             f"{dest_bucket}/{dest_key}",
@@ -587,7 +586,7 @@ class TestCopyObject:
         mock_s3_client.copy_object.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (
-            "s3_builder",
+            "s3_file_organizer.s3_builder",
             logging.ERROR,
             expected_log_msg,
         )
@@ -635,7 +634,7 @@ class TestDeleteObject:
         caplog.set_level(logging.INFO)
 
         expected_log: tuple[str, int, str] = (
-            "s3_builder",
+            "s3_file_organizer.s3_builder",
             logging.INFO,
             f"The object {bucket}/{key} was successfully deleted",
         )
@@ -693,7 +692,7 @@ class TestDeleteObject:
         mock_s3_client.delete_object.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (
-            "s3_builder",
+            "s3_file_organizer.s3_builder",
             logging.ERROR,
             expected_log_msg,
         )
@@ -738,7 +737,7 @@ class TestMoveObject:
             patch.object(s3_builder, "delete_object", return_value=True) as mock_delete,
         ):
             expected_log: tuple[str, int, str] = (
-                "s3_builder",
+                "s3_file_organizer.s3_builder",
                 logging.INFO,
                 f"Successfully moved object {source_bucket}/{source_key} "
                 f"to {dest_bucket}/{dest_key}",
@@ -842,7 +841,7 @@ class TestMoveObject:
             patch.object(s3_builder, "delete_object", **delete_kwargs) as mock_delete,
         ):
             expected_log: tuple[str, int, str] = (
-                "s3_builder",
+                "s3_file_organizer.s3_builder",
                 logging.ERROR,
                 expected_log_msg,
             )

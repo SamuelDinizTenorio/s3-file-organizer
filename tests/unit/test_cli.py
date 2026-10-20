@@ -4,8 +4,7 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-import cli
+from s3_file_organizer import cli
 
 
 class TestCliArgumentParser:
@@ -62,7 +61,7 @@ class TestCliMainExecution:
         # Arrange
         test_args = ["cli.py", "-b", "production-bucket", "-s", "incoming/"]
 
-        with patch("cli.S3Builder", return_value=mock_s3_builder):
+        with patch("s3_file_organizer.cli.S3Builder", return_value=mock_s3_builder):
             mock_organizer_instance = mock_file_organizer_cls.return_value
             mock_organizer_instance.organize_bucket.return_value = {
                 "moved": 5,
@@ -103,7 +102,7 @@ class TestCliMainExecution:
         test_args = ["cli.py", "-b", "error-bucket"]
 
         # Injeta a fixture mock_s3_builder na chamada de S3Builder dentro do CLI
-        with patch("cli.S3Builder", return_value=mock_s3_builder):
+        with patch("s3_file_organizer.cli.S3Builder", return_value=mock_s3_builder):
             mock_organizer_instance = mock_file_organizer_cls.return_value
             mock_organizer_instance.organize_bucket.side_effect = RuntimeError(
                 "S3 Network Timeout"

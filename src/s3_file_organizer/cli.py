@@ -8,16 +8,16 @@ to a dedicated S3 bucket structured by year and month.
 import argparse
 import logging
 
-from config import (
+from s3_file_organizer.config import (
     AWS_ACCESS_KEY_ID,
     AWS_ENDPOINT_URL,
     AWS_REGION,
     AWS_SECRET_ACCESS_KEY,
     setup_logging,
 )
-from file_organizer import FileOrganizer
-from s3_builder import S3Builder
-from utils import upload_log_to_s3
+from s3_file_organizer.file_organizer import FileOrganizer
+from s3_file_organizer.s3_builder import S3Builder
+from s3_file_organizer.utils import upload_log_to_s3
 
 logger = logging.getLogger(__name__)
 

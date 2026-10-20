@@ -3,9 +3,8 @@ from pathlib import Path
 
 from botocore.exceptions import ClientError
 from mypy_boto3_s3.type_defs import ObjectTypeDef
-
-from rules import EXTENSION_RULES
-from s3_builder import S3Builder
+from s3_file_organizer.rules import EXTENSION_RULES
+from s3_file_organizer.s3_builder import S3Builder
 
 logger = logging.getLogger(__name__)
 

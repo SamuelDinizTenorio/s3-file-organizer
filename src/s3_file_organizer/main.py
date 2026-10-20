@@ -2,8 +2,7 @@ import logging
 import os
 
 from dotenv import load_dotenv
-
-from s3_builder import S3Builder
+from s3_file_organizer.s3_builder import S3Builder
 
 load_dotenv()
 

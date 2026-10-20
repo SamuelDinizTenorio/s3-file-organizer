@@ -2,9 +2,8 @@ from unittest.mock import MagicMock, call
 
 import pytest
 from mypy_boto3_s3.type_defs import ObjectTypeDef
-
-from file_organizer import FileOrganizer
-from s3_builder import S3Builder
+from s3_file_organizer.file_organizer import FileOrganizer
+from s3_file_organizer.s3_builder import S3Builder
 
 
 class TestFileOrganizerInit:

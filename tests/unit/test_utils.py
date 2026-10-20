@@ -6,8 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from botocore.exceptions import ClientError
-
-from utils import upload_log_to_s3
+from s3_file_organizer.utils import upload_log_to_s3
 
 
 class TestUploadLogToS3:
@@ -17,7 +16,7 @@ class TestUploadLogToS3:
         self, mock_s3_builder: MagicMock
     ) -> None:
         """Ensure no S3 actions are performed if the local log file does not exist."""
-        with patch("utils.os.path.exists", return_value=False):
+        with patch("s3_file_organizer.utils.os.path.exists", return_value=False):
             upload_log_to_s3(s3_builder=mock_s3_builder, log_bucket="logs-bucket")
 
         # Assert no client method was invoked
@@ -40,8 +39,8 @@ class TestUploadLogToS3:
 
         # Mock datetime to ensure consistency in the S3 path format
         with (
-            patch("utils.LOG_FILE_PATH", str(log_file)),
-            patch("utils.datetime") as mock_datetime,
+            patch("s3_file_organizer.utils.LOG_FILE_PATH", str(log_file)),
+            patch("s3_file_organizer.utils.datetime") as mock_datetime,
         ):
             mock_datetime.datetime.now.return_value.strftime.side_effect = lambda fmt: (
                 "2026" if fmt == "%Y" else ("10" if fmt == "%m" else "20261012_120000")
@@ -80,7 +79,7 @@ class TestUploadLogToS3:
             {"Error": {"Code": "404", "Message": "Not Found"}}, "HeadBucket"
         )
 
-        with patch("utils.LOG_FILE_PATH", str(log_file)):
+        with patch("s3_file_organizer.utils.LOG_FILE_PATH", str(log_file)):
             # Act
             upload_log_to_s3(s3_builder=mock_s3_builder, log_bucket="logs-bucket")
 
@@ -107,7 +106,7 @@ class TestUploadLogToS3:
         mock_client.head_bucket.return_value = {}
         mock_client.upload_file.side_effect = RuntimeError("S3 Connection Lost")
 
-        with patch("utils.LOG_FILE_PATH", str(log_file)):
+        with patch("s3_file_organizer.utils.LOG_FILE_PATH", str(log_file)):
             # Act
             upload_log_to_s3(s3_builder=mock_s3_builder, log_bucket="logs-bucket")
 

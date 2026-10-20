@@ -3,8 +3,8 @@
 import sys
 from unittest.mock import patch
 
-import cli
-from s3_builder import S3Builder
+from s3_file_organizer import cli
+from s3_file_organizer.s3_builder import S3Builder
 
 
 class TestCliIntegration:

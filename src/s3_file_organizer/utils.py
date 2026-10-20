@@ -4,8 +4,8 @@ import datetime
 import logging
 import os
 
-from config import LOG_FILE_PATH
-from s3_builder import S3Builder
+from s3_file_organizer.config import LOG_FILE_PATH
+from s3_file_organizer.s3_builder import S3Builder
 
 logger = logging.getLogger(__name__)
 

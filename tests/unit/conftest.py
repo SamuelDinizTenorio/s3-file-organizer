@@ -9,9 +9,8 @@ from typing import Generator, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from file_organizer import FileOrganizer
-from s3_builder import S3Builder
+from s3_file_organizer.file_organizer import FileOrganizer
+from s3_file_organizer.s3_builder import S3Builder
 
 # =====================================================================
 # 1. S3 Infrastructure & Low-Level Boto3 Client Mocks
@@ -28,7 +27,7 @@ def mock_boto_client() -> Generator[MagicMock, None, None]:
     Yields:
         Generator[MagicMock, None, None]: The patched `boto3.client` mock object.
     """
-    with patch("s3_builder.boto3.client") as mock_client:
+    with patch("s3_file_organizer.s3_builder.boto3.client") as mock_client:
         mock_instance = MagicMock()
         mock_client.return_value = mock_instance
         yield mock_client
@@ -102,7 +101,7 @@ def mock_upload_log() -> Generator[MagicMock, None, None]:
     Yields:
         MagicMock: The patched upload_log_to_s3 mock object.
     """
-    with patch("cli.upload_log_to_s3") as mock_patch:
+    with patch("s3_file_organizer.cli.upload_log_to_s3") as mock_patch:
         yield mock_patch
 
 
@@ -113,7 +112,7 @@ def mock_file_organizer_cls() -> Generator[MagicMock, None, None]:
     Yields:
         MagicMock: The patched FileOrganizer class mock object.
     """
-    with patch("cli.FileOrganizer") as mock_patch:
+    with patch("s3_file_organizer.cli.FileOrganizer") as mock_patch:
         yield mock_patch
 
 
@@ -124,5 +123,5 @@ def mock_setup_logging() -> Generator[MagicMock, None, None]:
     Yields:
         MagicMock: The patched setup_logging mock object.
     """
-    with patch("cli.setup_logging") as mock_patch:
+    with patch("s3_file_organizer.cli.setup_logging") as mock_patch:
         yield mock_patch
