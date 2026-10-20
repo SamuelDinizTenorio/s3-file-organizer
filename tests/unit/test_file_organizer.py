@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, call
 import pytest
 from mypy_boto3_s3.type_defs import ObjectTypeDef
 
-from file_organizer import DEFAULT_EXTENSION_RULES, FileOrganizer
+from file_organizer import FileOrganizer
 from s3_builder import S3Builder
 
 
@@ -11,19 +11,27 @@ class TestFileOrganizerInit:
     """Unit tests for the FileOrganizer.__init__ method."""
 
     def test_init_with_default_rules(self, s3_builder: S3Builder) -> None:
-        """Ensure default rules are loaded when extension_rules is None."""
+        """Ensure default rules are loaded and mapped into extension_map when
+        extension_rules is None.
+        """
         organizer = FileOrganizer(s3_builder=s3_builder)
 
         assert organizer.s3_builder == s3_builder
-        assert organizer.extension_rules == DEFAULT_EXTENSION_RULES
+        assert organizer.extension_map.get(".pdf") == "documents"
+        assert organizer.extension_map.get(".csv") == "data"
+        assert organizer.extension_map.get(".png") == "images"
 
     def test_init_with_custom_rules(self, s3_builder: S3Builder) -> None:
         """Ensure custom rules override the default extension mapping dictionary."""
-        custom_rules = {".pdf": "custom_docs/", ".csv": "custom_data/"}
+        custom_rules = {
+            "custom_docs": [".pdf"],
+            "custom_data": [".csv"],
+        }
         organizer = FileOrganizer(s3_builder=s3_builder, extension_rules=custom_rules)
 
         assert organizer.s3_builder == s3_builder
-        assert organizer.extension_rules == custom_rules
+        assert organizer.extension_map.get(".pdf") == "custom_docs"
+        assert organizer.extension_map.get(".csv") == "custom_data"
 
 
 class TestGetTargetPrefix:
@@ -32,12 +40,12 @@ class TestGetTargetPrefix:
     @pytest.mark.parametrize(
         "source_key, expected_prefix",
         [
-            ("relatorio.pdf", "documents/"),
-            ("inbox/subfolder/RELATORIO.PDF", "documents/"),  # Uppercase extension
-            ("dados.csv", "data/"),
-            ("foto.PNG", "images/"),  # Uppercase extension
-            ("arquivo.tar.gz", "archives/"),  # Compound extension (.gz)
-            ("arquivo_desconhecido.xyz", None),  # Unmapped extension
+            ("record.pdf", "documents"),
+            ("inbox/subfolder/RECORD.PDF", "documents"),  # Uppercase extension
+            ("data.csv", "data"),
+            ("photo.PNG", "images"),  # Uppercase extension
+            ("document.txt", "documents"),  # Extensão mapeada válida
+            ("unknown_file.xyz", None),  # Unmapped extension
             ("README", None),  # No extension
             ("inbox/.gitignore", None),  # Hidden file without valid extension
         ],

@@ -16,17 +16,17 @@ class TestFileOrganizerHelpersIntegration:
         # Standard extension routing
         assert (
             integration_file_organizer.get_target_prefix("incoming/report.pdf")
-            == "documents/"
+            == "documents"
         )
         assert (
             integration_file_organizer.get_target_prefix("raw_data/metrics.csv")
-            == "data/"
+            == "data"
         )
 
         # Case-insensitivity verification
         assert (
             integration_file_organizer.get_target_prefix("uploads/PHOTO.JPEG")
-            == "images/"
+            == "images"
         )
 
         # Unmapped extension and extensionless keys
@@ -37,16 +37,16 @@ class TestFileOrganizerHelpersIntegration:
         self, integration_s3_builder: S3Builder
     ) -> None:
         """Verify get_target_prefix respects custom mapping rules in
-        integrated setup.
+        integrated setup using Category -> List[Extension] format.
         """
-        custom_rules = {".log": "logs/", ".py": "scripts/"}
+        custom_rules = {"logs": [".log"], "scripts": [".py"]}
         organizer = FileOrganizer(
             s3_builder=integration_s3_builder,
             extension_rules=custom_rules,
         )
 
-        assert organizer.get_target_prefix("app.log") == "logs/"
-        assert organizer.get_target_prefix("main.py") == "scripts/"
+        assert organizer.get_target_prefix("app.log") == "logs"
+        assert organizer.get_target_prefix("main.py") == "scripts"
         assert organizer.get_target_prefix("report.pdf") is None
 
     def test_resolve_destination_key_integration(

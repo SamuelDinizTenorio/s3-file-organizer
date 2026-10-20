@@ -4,25 +4,10 @@ from pathlib import Path
 from botocore.exceptions import ClientError
 from mypy_boto3_s3.type_defs import ObjectTypeDef
 
+from rules import EXTENSION_RULES
 from s3_builder import S3Builder
 
 logger = logging.getLogger(__name__)
-
-# Default mapping of extensions to destination folders
-DEFAULT_EXTENSION_RULES: dict[str, str] = {
-    ".pdf": "documents/",
-    ".doc": "documents/",
-    ".docx": "documents/",
-    ".txt": "documents/",
-    ".csv": "data/",
-    ".json": "data/",
-    ".xlsx": "data/",
-    ".png": "images/",
-    ".jpg": "images/",
-    ".jpeg": "images/",
-    ".zip": "archives/",
-    ".gz": "archives/",
-}
 
 
 class FileOrganizer:
@@ -31,23 +16,28 @@ class FileOrganizer:
     def __init__(
         self,
         s3_builder: S3Builder,
-        extension_rules: dict[str, str] | None = None,
+        extension_rules: dict[str, list[str]] | None = None,
     ) -> None:
         """Initialize FileOrganizer with an S3Builder instance and
         optional routing rules.
 
         Args:
             s3_builder (S3Builder): Configured S3 utility instance.
-            extension_rules (dict[str, str] | None): Mapping of extensions
-            to folder prefixes.
+            extension_rules (dict[str, list[str]] | None): Mapping of categories
+                to lists of file extensions.
         """
         self.s3_builder = s3_builder
-        self.extension_rules = extension_rules or DEFAULT_EXTENSION_RULES
+        raw_rules = extension_rules or EXTENSION_RULES
+
+        self.extension_map: dict[str, str] = {}
+        for category, extensions in raw_rules.items():
+            for ext in extensions:
+                self.extension_map[ext.lower()] = category
 
     def get_target_prefix(self, source_key: str) -> str | None:
         """Determine destination folder prefix based on file extension."""
         ext: str = Path(source_key).suffix.lower()
-        return self.extension_rules.get(ext)
+        return self.extension_map.get(ext)
 
     def resolve_destination_key(self, source_key: str, target_prefix: str) -> str:
         """Construct destination key placing the source filename under target_prefix."""
