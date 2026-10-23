@@ -92,6 +92,45 @@ class TestCliIntegration:
         log_objects = integration_s3_builder.list_objects(bucket=log_bucket)
         assert len(log_objects) > 0
 
+    def test_cli_main_dry_run_integration(
+        self,
+        integration_s3_builder: S3Builder,
+        test_bucket: str,
+        log_bucket: str,
+    ) -> None:
+        """Verify end-to-end CLI execution with --dry-run against LocalStack."""
+        # Arrange
+        integration_s3_builder.s3_client.put_object(
+            Bucket=test_bucket,
+            Key="inbox/dry_run_cli_doc.pdf",
+            Body=b"PDF content for dry run CLI test",
+        )
+
+        test_args = [
+            "cli.py",
+            "-b",
+            test_bucket,
+            "-s",
+            "inbox/",
+            "--dry-run",
+        ]
+
+        # Act
+        with patch.object(sys, "argv", test_args):
+            cli.main()
+
+        # Assert
+        # The file must remain at the source and NOT be moved within S3
+        objects = integration_s3_builder.list_objects(bucket=test_bucket)
+        keys = [obj["Key"] for obj in objects]
+
+        assert "inbox/dry_run_cli_doc.pdf" in keys
+        assert "documents/dry_run_cli_doc.pdf" not in keys
+
+        # Validates log transmission.
+        log_objects = integration_s3_builder.list_objects(bucket=log_bucket)
+        assert len(log_objects) > 0
+
     def test_cli_main_error_handling_integration(
         self,
         integration_s3_builder: S3Builder,
