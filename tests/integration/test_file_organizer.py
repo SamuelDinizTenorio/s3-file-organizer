@@ -133,6 +133,35 @@ class TestOrganizeBucketIntegration:
         assert "inbox/metrics.csv" not in keys
         assert "inbox/photo.png" not in keys
 
+    def test_organize_bucket_dry_run_integration(
+        self,
+        integration_s3_builder: S3Builder,
+        integration_file_organizer: FileOrganizer,
+        test_bucket: str,
+    ) -> None:
+        """Verify that dry_run=True simulates organization and leaves
+        source files untouched in S3 against LocalStack.
+        """
+        client = integration_s3_builder.s3_client
+        client.put_object(
+            Bucket=test_bucket,
+            Key="inbox/dry_run_test.pdf",
+            Body=b"Dry run content",
+        )
+
+        stats = integration_file_organizer.organize_bucket(
+            bucket=test_bucket, source_prefix="inbox/", dry_run=True
+        )
+
+        assert stats == {"moved": 1, "skipped": 0, "failed": 0}
+
+        objects = integration_s3_builder.list_objects(bucket=test_bucket)
+        keys = [obj["Key"] for obj in objects if obj.get("Key")]
+
+        # The source file must REMAIN at the source, and the destination must NOT exist.
+        assert "inbox/dry_run_test.pdf" in keys
+        assert "documents/dry_run_test.pdf" not in keys
+
     def test_organize_bucket_fallback_integration(
         self,
         integration_s3_builder: S3Builder,
