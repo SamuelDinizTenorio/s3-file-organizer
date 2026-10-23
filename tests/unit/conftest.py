@@ -9,6 +9,7 @@ from typing import Generator, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from s3_file_organizer.file_organizer import FileOrganizer
 from s3_file_organizer.s3_builder import S3Builder
 

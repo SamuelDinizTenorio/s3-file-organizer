@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from boto3.exceptions import S3UploadFailedError
 from botocore.exceptions import ClientError
+
 from s3_file_organizer.s3_builder import S3Builder
 
 

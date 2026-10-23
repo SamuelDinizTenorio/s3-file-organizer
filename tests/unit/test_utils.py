@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from botocore.exceptions import ClientError
+
 from s3_file_organizer.utils import upload_log_to_s3
 
 

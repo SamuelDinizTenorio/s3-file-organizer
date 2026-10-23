@@ -4,6 +4,7 @@ import sys
 from unittest.mock import patch
 
 import pytest
+
 from s3_file_organizer import cli
 from s3_file_organizer.s3_builder import S3Builder
 

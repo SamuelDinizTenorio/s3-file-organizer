@@ -6,6 +6,7 @@ import pytest
 from boto3.exceptions import S3UploadFailedError
 from botocore.exceptions import ClientError
 from mypy_boto3_s3.type_defs import ObjectTypeDef
+
 from s3_file_organizer.s3_builder import S3Builder
 
 
