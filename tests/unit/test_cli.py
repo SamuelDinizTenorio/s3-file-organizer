@@ -29,6 +29,7 @@ class TestCliArgumentParser:
         assert args.source_prefix == "inbox/"
         assert args.uncategorized_prefix == "others/"
         assert args.rules is False
+        assert args.dry_run is False
 
     def test_parse_arguments_rules_flag(self) -> None:
         """Verify that the --rules / -r flag is parsed correctly."""
@@ -38,6 +39,15 @@ class TestCliArgumentParser:
 
         assert args.rules is True
         assert args.bucket is None
+
+    def test_parse_arguments_dry_run_flag(self) -> None:
+        """Verify that the --dry-run flag is parsed correctly."""
+        test_args = ["cli.py", "-b", "my-target-bucket", "--dry-run"]
+        with patch.object(sys, "argv", test_args):
+            args = cli.parse_arguments()
+
+        assert args.bucket == "my-target-bucket"
+        assert args.dry_run is True
 
     def test_parse_arguments_bucket_not_required_at_parser_level(self) -> None:
         """Verify that omitting the bucket does not raise SystemExit at parser level
@@ -154,11 +164,45 @@ class TestCliMainExecution:
             bucket="production-bucket",
             source_prefix="incoming/",
             uncategorized_prefix=None,
+            dry_run=False,
         )
 
         mock_upload_log.assert_called_once_with(
             s3_builder=mock_s3_builder,
             log_bucket="my-logs-localstack",
+        )
+
+    def test_main_dry_run_execution(
+        self,
+        mock_setup_logging: MagicMock,
+        mock_file_organizer_cls: MagicMock,
+        mock_upload_log: MagicMock,
+        mock_s3_builder: MagicMock,
+    ) -> None:
+        """Verify that passing --dry-run correctly forwards dry_run=True
+        to organize_bucket.
+        """
+        # Arrange
+        test_args = ["cli.py", "-b", "production-bucket", "--dry-run"]
+
+        with patch("s3_file_organizer.cli.S3Builder", return_value=mock_s3_builder):
+            mock_organizer_instance = mock_file_organizer_cls.return_value
+            mock_organizer_instance.organize_bucket.return_value = {
+                "moved": 2,
+                "skipped": 0,
+                "failed": 0,
+            }
+
+            # Act
+            with patch.object(sys, "argv", test_args):
+                cli.main()
+
+        # Assert
+        mock_organizer_instance.organize_bucket.assert_called_once_with(
+            bucket="production-bucket",
+            source_prefix=None,
+            uncategorized_prefix=None,
+            dry_run=True,
         )
 
     def test_main_rules_flag_execution(self) -> None:

@@ -74,6 +74,12 @@ def parse_arguments() -> argparse.Namespace:
         help="Target S3 bucket for execution logs (default: my-logs-localstack).",
     )
 
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Simulate file organization without making any changes in S3.",
+    )
+
     return parser.parse_args()
 
 
@@ -126,6 +132,7 @@ def main() -> None:
             bucket=args.bucket,
             source_prefix=args.source_prefix,
             uncategorized_prefix=args.uncategorized_prefix,
+            dry_run=args.dry_run,
         )
         logger.info(
             "Organization process complete. Summary: %s",
