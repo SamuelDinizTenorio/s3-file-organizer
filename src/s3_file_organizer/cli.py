@@ -66,6 +66,14 @@ def parse_arguments() -> argparse.Namespace:
         help="Display all configured extension routing rules and exit.",
     )
 
+    parser.add_argument(
+        "-l",
+        "--log-bucket",
+        type=str,
+        default="my-logs-localstack",
+        help="Target S3 bucket for execution logs (default: my-logs-localstack).",
+    )
+
     return parser.parse_args()
 
 
@@ -133,7 +141,7 @@ def main() -> None:
     finally:
         upload_log_to_s3(
             s3_builder=s3_builder,
-            log_bucket="my-logs-localstack",
+            log_bucket=args.log_bucket,
         )
 
 

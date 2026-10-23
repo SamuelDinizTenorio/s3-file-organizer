@@ -69,6 +69,40 @@ class TestCliArgumentParser:
         assert args.source_prefix is None
         assert args.uncategorized_prefix is None
 
+    def test_parse_arguments_log_bucket_default(self) -> None:
+        """Verify that --log-bucket defaults to 'my-logs-localstack' when omitted."""
+        test_args = ["cli.py", "-b", "my-target-bucket"]
+        with patch.object(sys, "argv", test_args):
+            args = cli.parse_arguments()
+
+        assert args.log_bucket == "my-logs-localstack"
+
+    def test_parse_arguments_custom_log_bucket(self) -> None:
+        """Verify that --log-bucket / -l parses custom log bucket names correctly."""
+        test_args_long = [
+            "cli.py",
+            "-b",
+            "my-target-bucket",
+            "--log-bucket",
+            "custom-audit-logs",
+        ]
+        with patch.object(sys, "argv", test_args_long):
+            args = cli.parse_arguments()
+
+        assert args.log_bucket == "custom-audit-logs"
+
+        test_args_short = [
+            "cli.py",
+            "-b",
+            "my-target-bucket",
+            "-l",
+            "short-audit-logs",
+        ]
+        with patch.object(sys, "argv", test_args_short):
+            args_short = cli.parse_arguments()
+
+        assert args_short.log_bucket == "short-audit-logs"
+
 
 class TestCliDisplayRules:
     """Unit tests for the display_rules helper function."""
@@ -171,7 +205,6 @@ class TestCliMainExecution:
         # Arrange
         test_args = ["cli.py", "-b", "error-bucket"]
 
-        # Injeta a fixture mock_s3_builder na chamada de S3Builder dentro do CLI
         with patch("s3_file_organizer.cli.S3Builder", return_value=mock_s3_builder):
             mock_organizer_instance = mock_file_organizer_cls.return_value
             mock_organizer_instance.organize_bucket.side_effect = RuntimeError(
@@ -180,7 +213,6 @@ class TestCliMainExecution:
 
             # Act
             with patch.object(sys, "argv", test_args):
-                # Não deve propagar a exceção pois o main captura com try/except
                 cli.main()
 
         # Assert
@@ -188,9 +220,38 @@ class TestCliMainExecution:
         mock_file_organizer_cls.assert_called_once()
         mock_organizer_instance.organize_bucket.assert_called_once()
 
-        # O bloco finally deve garantir que o upload do log ocorreu mesmo após o erro,
-        # utilizando o S3Builder fornecido pela fixture compartilhada.
         mock_upload_log.assert_called_once_with(
             s3_builder=mock_s3_builder,
             log_bucket="my-logs-localstack",
+        )
+
+    def test_main_with_custom_log_bucket(
+        self,
+        mock_setup_logging: MagicMock,
+        mock_file_organizer_cls: MagicMock,
+        mock_upload_log: MagicMock,
+        mock_s3_builder: MagicMock,
+    ) -> None:
+        """Verify that a custom --log-bucket is successfully forwarded
+        to upload_log_to_s3.
+        """
+        # Arrange
+        test_args = ["cli.py", "-b", "my-bucket", "-l", "my-custom-audit-bucket"]
+
+        with patch("s3_file_organizer.cli.S3Builder", return_value=mock_s3_builder):
+            mock_organizer_instance = mock_file_organizer_cls.return_value
+            mock_organizer_instance.organize_bucket.return_value = {
+                "moved": 1,
+                "skipped": 0,
+                "failed": 0,
+            }
+
+            # Act
+            with patch.object(sys, "argv", test_args):
+                cli.main()
+
+        # Assert
+        mock_upload_log.assert_called_once_with(
+            s3_builder=mock_s3_builder,
+            log_bucket="my-custom-audit-bucket",
         )
