@@ -141,3 +141,33 @@ class TestCliIntegration:
             cli.main()
 
         assert exc_info.value.code == 1
+
+    def test_cli_main_custom_log_bucket_integration(
+        self,
+        integration_s3_builder: S3Builder,
+        test_bucket: str,
+    ) -> None:
+        """Verify end-to-end CLI execution using a custom --log-bucket
+        against LocalStack.
+        """
+        custom_log_bucket = "my-custom-audit-bucket-test"
+
+        test_args = [
+            "cli.py",
+            "-b",
+            test_bucket,
+            "--log-bucket",
+            custom_log_bucket,
+        ]
+
+        with patch.object(sys, "argv", test_args):
+            cli.main()
+
+        # Verify that the logs were successfully sent to the custom bucket in LocalStack
+        log_objects = integration_s3_builder.list_objects(bucket=custom_log_bucket)
+        assert len(log_objects) > 0
+
+        # Verify that the temporal structure (year/month) has been respected within
+        # the custom bucket.
+        keys = [obj["Key"] for obj in log_objects]
+        assert any("organizer_logs/" in key for key in keys)
