@@ -154,6 +154,29 @@ class TestOrganizeBucket:
             any_order=False,
         )
 
+    def test_organize_bucket_dry_run_mode(
+        self,
+        file_organizer: FileOrganizer,
+        mock_s3_builder: MagicMock,
+    ) -> None:
+        """Verify that dry_run=True simulates organization, increments moved count,
+        and does not execute actual S3 move operations.
+        """
+        mock_s3_builder.list_objects.return_value = [
+            {"Key": "inbox/report.pdf"},
+            {"Key": "inbox/data.csv"},
+        ]
+
+        stats = file_organizer.organize_bucket(
+            bucket="my-bucket", source_prefix="inbox/", dry_run=True
+        )
+
+        assert stats == {"moved": 2, "skipped": 0, "failed": 0}
+        mock_s3_builder.list_objects.assert_called_once_with(
+            bucket="my-bucket", prefix="inbox/"
+        )
+        mock_s3_builder.move_object.assert_not_called()
+
     def test_organize_bucket_unmapped_extension_with_default_fallback(
         self,
         file_organizer: FileOrganizer,

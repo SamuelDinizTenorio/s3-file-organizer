@@ -51,6 +51,7 @@ class FileOrganizer:
         bucket: str,
         source_prefix: str = "",
         uncategorized_prefix: str | None = "others/",
+        dry_run: bool = False,
     ) -> dict[str, int]:
         """Scan S3 bucket prefix and move files into categorized folders.
 
@@ -58,6 +59,7 @@ class FileOrganizer:
             bucket (str): Name of the target S3 bucket.
             source_prefix (str): Folder prefix to scan (default: root of bucket).
             uncategorized_prefix (str | None): Fallback folder for unmapped extensions.
+            dry_run (bool): If True, simulates the organization without modifying S3.
 
         Returns:
             dict[str, int]: Execution summary with counts of moved, skipped,
@@ -100,6 +102,16 @@ class FileOrganizer:
                 stats["skipped"] += 1
                 continue
 
+            if dry_run:
+                logger.info(
+                    "[DRY-RUN] Would move object %s -> %s in bucket '%s'",
+                    source_key,
+                    dest_key,
+                    bucket,
+                )
+                stats["moved"] += 1
+                continue
+
             try:
                 self.s3_builder.move_object(
                     source_bucket=bucket,
@@ -118,5 +130,10 @@ class FileOrganizer:
                 stats["failed"] += 1
                 continue
 
-        logger.info("Organization completed for bucket '%s': %s", bucket, stats)
+        logger.info(
+            "Organization completed for bucket '%s' (dry_run=%s): %s",
+            bucket,
+            dry_run,
+            stats,
+        )
         return stats
