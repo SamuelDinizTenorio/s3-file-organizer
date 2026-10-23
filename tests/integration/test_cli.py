@@ -3,6 +3,7 @@
 import sys
 from unittest.mock import patch
 
+import pytest
 from s3_file_organizer import cli
 from s3_file_organizer.s3_builder import S3Builder
 
@@ -108,3 +109,35 @@ class TestCliIntegration:
         # even after the failure.
         log_objects = integration_s3_builder.list_objects(bucket=log_bucket)
         assert len(log_objects) > 0
+
+    def test_cli_main_rules_flag_integration(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Verify that --rules prints extension routing rules
+        and exits cleanly with 0.
+        """
+        test_args = ["cli.py", "--rules"]
+
+        with (
+            patch.object(sys, "argv", test_args),
+            pytest.raises(SystemExit) as exc_info,
+        ):
+            cli.main()
+
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "Active Extension Routing Rules" in captured.out
+
+    def test_cli_main_missing_bucket_integration(self) -> None:
+        """Verify that executing main without a bucket or
+        --rules exits with status 1.
+        """
+        test_args = ["cli.py"]
+
+        with (
+            patch.object(sys, "argv", test_args),
+            pytest.raises(SystemExit) as exc_info,
+        ):
+            cli.main()
+
+        assert exc_info.value.code == 1
