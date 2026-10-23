@@ -7,6 +7,7 @@ to a dedicated S3 bucket structured by year and month.
 
 import argparse
 import logging
+import sys
 
 from s3_file_organizer.config import (
     AWS_ACCESS_KEY_ID,
@@ -16,6 +17,7 @@ from s3_file_organizer.config import (
     setup_logging,
 )
 from s3_file_organizer.file_organizer import FileOrganizer
+from s3_file_organizer.rules import EXTENSION_RULES
 from s3_file_organizer.s3_builder import S3Builder
 from s3_file_organizer.utils import upload_log_to_s3
 
@@ -37,7 +39,7 @@ def parse_arguments() -> argparse.Namespace:
         "-b",
         "--bucket",
         type=str,
-        required=True,
+        required=False,
         help="Target S3 bucket name to process.",
     )
 
@@ -57,7 +59,24 @@ def parse_arguments() -> argparse.Namespace:
         help="Optional destination prefix for files with unmapped extensions.",
     )
 
+    parser.add_argument(
+        "-r",
+        "--rules",
+        action="store_true",
+        help="Display all configured extension routing rules and exit.",
+    )
+
     return parser.parse_args()
+
+
+def display_rules() -> None:
+    """Prints the active extension routing rules in a readable format."""
+    print("\n📦 Active Extension Routing Rules:")
+    print("-" * 40)
+    for category, extensions in EXTENSION_RULES.items():
+        ext_list = ", ".join(extensions)
+        print(f"  • {category.upper()}: [{ext_list}]")
+    print("-" * 40 + "\n")
 
 
 def main() -> None:
@@ -67,6 +86,18 @@ def main() -> None:
     bucket organization routine, and guarantees log persistence to S3 upon termination.
     """
     args: argparse.Namespace = parse_arguments()
+
+    if args.rules:
+        display_rules()
+        sys.exit(0)
+
+    if not args.bucket:
+        print(
+            "Error: the following arguments are required: -b/--bucket "
+            + "(unless using --rules)"
+        )
+        sys.exit(1)
+
     setup_logging()
 
     s3_builder = S3Builder(

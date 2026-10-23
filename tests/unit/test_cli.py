@@ -27,14 +27,37 @@ class TestCliArgumentParser:
         assert args.bucket == "my-target-bucket"
         assert args.source_prefix == "inbox/"
         assert args.uncategorized_prefix == "others/"
+        assert args.rules is False
 
-    def test_parse_arguments_missing_bucket_raises_system_exit(self) -> None:
-        """Verify that omitting the required bucket flag (-b/--bucket)
-        exits the program.
+    def test_parse_arguments_rules_flag(self) -> None:
+        """Verify that the --rules / -r flag is parsed correctly."""
+        test_args = ["cli.py", "--rules"]
+        with patch.object(sys, "argv", test_args):
+            args = cli.parse_arguments()
+
+        assert args.rules is True
+        assert args.bucket is None
+
+    def test_parse_arguments_bucket_not_required_at_parser_level(self) -> None:
+        """Verify that omitting the bucket does not raise SystemExit at parser level
+        since it's validated later in main (allowing --rules to work without a bucket).
         """
         test_args = ["cli.py"]
-        with patch.object(sys, "argv", test_args), pytest.raises(SystemExit):
-            cli.parse_arguments()
+        with patch.object(sys, "argv", test_args):
+            args = cli.parse_arguments()
+
+        assert args.bucket is None
+        assert args.rules is False
+
+    def test_parse_arguments_missing_bucket_returns_none(self) -> None:
+        """Verify that omitting the bucket flag sets bucket to None
+        at the parser level (deferred validation for --rules).
+        """
+        test_args = ["cli.py"]
+        with patch.object(sys, "argv", test_args):
+            args = cli.parse_arguments()
+
+        assert args.bucket is None
 
     def test_parse_arguments_only_required_bucket(self) -> None:
         """Verify that optional arguments default to None when omitted."""
@@ -45,6 +68,21 @@ class TestCliArgumentParser:
         assert args.bucket == "my-target-bucket"
         assert args.source_prefix is None
         assert args.uncategorized_prefix is None
+
+
+class TestCliDisplayRules:
+    """Unit tests for the display_rules helper function."""
+
+    def test_display_rules_output(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Verify that display_rules prints active extension routing rules correctly."""
+        # Act
+        cli.display_rules()
+
+        # Assert
+        captured = capsys.readouterr()
+        assert "Active Extension Routing Rules" in captured.out
+        assert "DOCUMENTS" in captured.out
+        assert "IMAGES" in captured.out
 
 
 class TestCliMainExecution:
@@ -87,6 +125,38 @@ class TestCliMainExecution:
             s3_builder=mock_s3_builder,
             log_bucket="my-logs-localstack",
         )
+
+    def test_main_rules_flag_execution(self) -> None:
+        """Verify that passing --rules displays rules, skips pipeline,
+        and exits with code 0.
+        """
+        # Arrange
+        test_args = ["cli.py", "--rules"]
+
+        # Act & Assert
+        with (
+            patch.object(sys, "argv", test_args),
+            patch("s3_file_organizer.cli.display_rules") as mock_display,
+        ):
+            with pytest.raises(SystemExit) as exc_info:
+                cli.main()
+
+            assert exc_info.value.code == 0
+            mock_display.assert_called_once()
+
+    def test_main_missing_bucket_exits_with_error(self) -> None:
+        """Verify that missing bucket without --rules prints error
+        and exits with code 1.
+        """
+        # Arrange
+        test_args = ["cli.py"]
+
+        # Act & Assert
+        with patch.object(sys, "argv", test_args):
+            with pytest.raises(SystemExit) as exc_info:
+                cli.main()
+
+            assert exc_info.value.code == 1
 
     def test_main_handles_organization_exception_and_finally_runs(
         self,
