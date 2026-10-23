@@ -2,9 +2,9 @@ name: CI Quality, Security & Tests
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
 
 jobs:
   pipeline:
@@ -27,15 +27,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: "pip" 
+          cache: "pip"
 
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements-dev.txt ]; then 
+          if [ -f requirements-dev.txt ]; then
             pip install -r requirements-dev.txt
-          else 
-            pip install -r requirements.txt;
+          else
+            pip install -r requirements.txt
           fi
 
       - name: Lint & Formatting (Ruff)
@@ -45,7 +45,7 @@ jobs:
 
       - name: Type Checking (Mypy)
         run: |
-          mypy s3_builder.py --ignore-missing-imports
+          mypy src tests
 
       - name: Security Audit (pip-audit)
         run: |
@@ -53,7 +53,7 @@ jobs:
 
       - name: Run Unit Tests
         run: |
-          pytest tests/unit --cov=s3_builder --cov-report=term-missing
+          pytest tests/unit --cov=s3_file_organizer --cov-report=term-missing
 
       - name: Run Integration Tests
         env:
@@ -62,5 +62,5 @@ jobs:
           AWS_SECRET_ACCESS_KEY: test
           AWS_ENDPOINT_URL: http://localhost:4566
         run: |
-          pytest tests/integration --cov=s3_builder --cov-append --cov-report=term-missing --cov-fail-under=85
+          pytest tests/integration --cov=s3_file_organizer --cov-append --cov-report=term-missing --cov-fail-under=85
           
