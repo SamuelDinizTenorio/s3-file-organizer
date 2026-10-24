@@ -8,6 +8,7 @@ to a dedicated S3 bucket structured by year and month.
 import argparse
 import logging
 import sys
+from importlib.metadata import PackageNotFoundError, version
 
 from s3_file_organizer.config import (
     AWS_ACCESS_KEY_ID,
@@ -23,6 +24,8 @@ from s3_file_organizer.utils import upload_log_to_s3
 
 logger = logging.getLogger(__name__)
 
+FALLBACK_VERSION = "0.1.0"
+
 
 def parse_arguments() -> argparse.Namespace:
     """Parses and validates command-line arguments for the CLI application.
@@ -33,6 +36,23 @@ def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Automated S3 File Organizer CLI - "
         "Routes files based on extension rules.",
+    )
+
+    try:
+        app_version = version("s3-file-organizer")
+    except PackageNotFoundError:
+        logger.warning(
+            "Package 's3-file-organizer' not found in environment metadata."
+            + "Falling back to default version '%s'.",
+            FALLBACK_VERSION,
+        )
+        app_version = FALLBACK_VERSION
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {app_version}",
+        help="Show program's version number and exit.",
     )
 
     parser.add_argument(

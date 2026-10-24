@@ -1,15 +1,59 @@
 """Unit tests for the CLI module (cli.py)."""
 
 import sys
+from importlib.metadata import PackageNotFoundError
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from s3_file_organizer import cli
+from s3_file_organizer.cli import FALLBACK_VERSION
 
 
 class TestCliArgumentParser:
     """Unit tests for command-line argument parsing."""
+
+    def test_parse_arguments_version_flag_success(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Verify that --version displays version information and exits with code 0."""
+        test_args = ["cli.py", "--version"]
+
+        with (
+            patch.object(sys, "argv", test_args),
+            pytest.raises(SystemExit) as exc_info,
+        ):
+            cli.parse_arguments()
+
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        output = captured.out + captured.err
+
+        assert cli.FALLBACK_VERSION in output or "0.1.0" in output
+
+    def test_parse_arguments_version_fallback_on_package_not_found(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Verify that --version falls back to the defined default version
+        and logs a warning when PackageNotFoundError occurs.
+        """
+        test_args = ["cli.py", "--version"]
+
+        with (
+            patch.object(sys, "argv", test_args),
+            patch(
+                "s3_file_organizer.cli.version",
+                side_effect=PackageNotFoundError,
+            ),
+            pytest.raises(SystemExit) as exc_info,
+        ):
+            cli.parse_arguments()
+
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        output = captured.out + captured.err
+
+        assert FALLBACK_VERSION in output
 
     def test_parse_arguments_required_and_optional_flags(self) -> None:
         """Verify that required and optional CLI arguments are parsed correctly."""
