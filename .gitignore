@@ -10,6 +10,12 @@ __pycache__/
 .mypy_cache/
 .coverage
 
+# Packaging / Egg-Info (Essencial para ignorar a pasta gerada pelo pip install -e .)
+*.egg-info/
+build/
+dist/
+.eggs/
+
 # LocalStack / Persistent Storage
 volume/
 
