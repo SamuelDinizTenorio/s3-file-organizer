@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "s3-file-organizer"
 version = "0.1.0"
 description = "Builder utility for provisioning AWS S3 and automated file organization."
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "boto3>=1.43.0",
     "python-dotenv>=1.0.0",
@@ -21,7 +21,7 @@ where = ["src"]
 # Ruff Configuration (Linter and Formatter)
 [tool.ruff]
 line-length = 88
-target-version = "py310"
+target-version = "py312"
 src = ["src"]
 
 [tool.ruff.lint]
