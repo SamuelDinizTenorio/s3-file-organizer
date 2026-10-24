@@ -1,3 +1,5 @@
+"""Unit tests for the S3Builder class."""
+
 import logging
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
@@ -16,7 +18,6 @@ class TestInit:
     @pytest.mark.parametrize(
         "kwargs, expected_args",
         [
-            # Case 1: Default values
             (
                 {},
                 {
@@ -27,7 +28,6 @@ class TestInit:
                     "region_name": "us-east-1",
                 },
             ),
-            # Case 2: Overwriting all parameters
             (
                 {
                     "endpoint_url": "https://localhost:4566",
@@ -43,7 +43,6 @@ class TestInit:
                     "region_name": "us-east-2",
                 },
             ),
-            # Case 3: Overwriting only the region and the endpoint (partial)
             (
                 {
                     "endpoint_url": "http://s3.local:4566",
@@ -100,7 +99,6 @@ class TestInit:
         match_pattern: str,
         expected_log_msg: str,
     ) -> None:
-        # Arrange
         mock_boto_client.side_effect = exception_instance
 
         expected_log: tuple[str, int, str] = (
@@ -109,7 +107,6 @@ class TestInit:
             expected_log_msg,
         )
 
-        # Act & Assert
         with pytest.raises(type(exception_instance), match=match_pattern):
             S3Builder()
 
@@ -155,7 +152,6 @@ class TestCreateBucket:
         expected_log_level: int,
         expected_log_msg: str,
     ) -> None:
-        # Arrange
         caplog.set_level(logging.INFO)
         bucket_name: str = "my-bucket"
         mock_s3_client.create_bucket.side_effect = side_effect
@@ -166,10 +162,8 @@ class TestCreateBucket:
             expected_log_msg,
         )
 
-        # Act
         result = s3_builder.create_bucket(bucket_name=bucket_name)
 
-        # Assert
         mock_s3_client.create_bucket.assert_called_once_with(Bucket=bucket_name)
         assert result is True
         assert expected_log in caplog.record_tuples
@@ -209,7 +203,6 @@ class TestCreateBucket:
         match_pattern: str,
         expected_log_msg: str,
     ) -> None:
-        # Arrange
         bucket_name: str = "my-bucket"
         mock_s3_client.create_bucket.side_effect = exception_instance
 
@@ -219,7 +212,6 @@ class TestCreateBucket:
             expected_log_msg,
         )
 
-        # Act & Assert
         with pytest.raises(type(exception_instance), match=match_pattern):
             s3_builder.create_bucket(bucket_name=bucket_name)
 
@@ -247,7 +239,6 @@ class TestUploadFile:
         bucket: str,
         key: str,
     ) -> None:
-        # Arrange
         caplog.set_level(logging.INFO)
 
         expected_log: tuple[str, int, str] = (
@@ -256,10 +247,8 @@ class TestUploadFile:
             f"Successfully uploaded {filename} to {bucket}/{key}",
         )
 
-        # Act
         result = s3_builder.upload_file(filename=filename, bucket=bucket, key=key)
 
-        # Assert
         mock_s3_client.upload_file.assert_called_once_with(
             Filename=filename, Bucket=bucket, Key=key
         )
@@ -312,7 +301,6 @@ class TestUploadFile:
         match_pattern: str,
         expected_log_msg: str,
     ) -> None:
-        # Arrange
         filename: str = "my-file"
         bucket: str = "my-bucket"
         key: str = "my-key"
@@ -325,7 +313,6 @@ class TestUploadFile:
             expected_log_msg,
         )
 
-        # Act & Assert
         with pytest.raises(type(exception_instance), match=match_pattern):
             s3_builder.upload_file(filename=filename, bucket=bucket, key=key)
 
@@ -341,7 +328,6 @@ class TestListObjects:
     @pytest.mark.parametrize(
         "bucket, prefix, paginator_pages, expected_keys, expected_log_msg",
         [
-            # Case 1: Bucket with multiple objects using default prefix (None)
             (
                 "my-bucket",
                 None,
@@ -362,7 +348,6 @@ class TestListObjects:
                 "Successfully listed 3 object(s) in bucket 'my-bucket' "
                 "(without prefix)",
             ),
-            # Case 2: Filtering by a specific key prefix
             (
                 "my-bucket",
                 "documents/",
@@ -377,7 +362,6 @@ class TestListObjects:
                 "Successfully listed 1 object(s) in bucket 'my-bucket' "
                 "with prefix 'documents/'",
             ),
-            # Case 3: Empty bucket (missing 'Contents' key in API response)
             (
                 "empty-bucket",
                 None,
@@ -400,7 +384,6 @@ class TestListObjects:
         expected_log_msg: str,
     ) -> None:
         """Test successful execution of list_objects across various scenarios."""
-        # Arrange
         caplog.set_level(logging.INFO)
         mock_paginator = MagicMock()
         mock_s3_client.get_paginator.return_value = mock_paginator
@@ -412,17 +395,14 @@ class TestListObjects:
             expected_log_msg,
         )
 
-        # Act
         kwargs = {"bucket": bucket}
         if prefix is not None:
             kwargs["prefix"] = prefix
 
         result = s3_builder.list_objects(**kwargs)
 
-        # Assert
         mock_s3_client.get_paginator.assert_called_once_with("list_objects_v2")
 
-        # Dynamically validates whether pagination_kwargs was constructed correctly.
         expected_paginate_kwargs = {"Bucket": bucket}
         if prefix is not None:
             expected_paginate_kwargs["Prefix"] = prefix
@@ -434,7 +414,6 @@ class TestListObjects:
     @pytest.mark.parametrize(
         "exception_instance, match_pattern, expected_log_msg",
         [
-            # Case 1: AWS API ClientError (e.g., target bucket does not exist)
             (
                 ClientError(
                     {
@@ -450,7 +429,6 @@ class TestListObjects:
                 "An error occurred (NoSuchBucket) when calling the ListObjectsV2 "
                 "operation: The specified bucket does not exist",
             ),
-            # Case 2: Unexpected generic exception during paginator iteration
             (
                 Exception("Unexpected paginator failure"),
                 "Unexpected paginator failure",
@@ -469,7 +447,6 @@ class TestListObjects:
         expected_log_msg: str,
     ) -> None:
         """Test exception handling and logging behavior for list_objects failures."""
-        # Arrange
         bucket: str = "my-bucket"
         mock_paginator = MagicMock()
         mock_s3_client.get_paginator.return_value = mock_paginator
@@ -481,7 +458,6 @@ class TestListObjects:
             expected_log_msg,
         )
 
-        # Act & Assert
         with pytest.raises(type(exception_instance), match=match_pattern):
             s3_builder.list_objects(bucket=bucket)
 
@@ -496,9 +472,7 @@ class TestCopyObject:
     @pytest.mark.parametrize(
         "source_bucket, source_key, dest_bucket, dest_key",
         [
-            # Case 1: Copying within the same bucket (renaming/moving)
             ("my-bucket", "file.txt", "my-bucket", "documents/file.txt"),
-            # Case 2: Copying between different buckets
             ("source-bucket", "raw/data.csv", "target-bucket", "processed/data.csv"),
         ],
     )
@@ -513,7 +487,6 @@ class TestCopyObject:
         dest_key: str,
     ) -> None:
         """Test successful execution of copy_object across various scenarios."""
-        # Arrange
         caplog.set_level(logging.INFO)
 
         expected_log: tuple[str, int, str] = (
@@ -523,7 +496,6 @@ class TestCopyObject:
             f"{dest_bucket}/{dest_key}",
         )
 
-        # Act
         result = s3_builder.copy_object(
             source_bucket=source_bucket,
             source_key=source_key,
@@ -531,7 +503,6 @@ class TestCopyObject:
             dest_key=dest_key,
         )
 
-        # Assert
         mock_s3_client.copy_object.assert_called_once_with(
             CopySource={"Bucket": source_bucket, "Key": source_key},
             Bucket=dest_bucket,
@@ -543,7 +514,6 @@ class TestCopyObject:
     @pytest.mark.parametrize(
         "exception_instance, match_pattern, expected_log_msg",
         [
-            # Case 1: AWS API ClientError (e.g., source object or bucket does not exist)
             (
                 ClientError(
                     {
@@ -559,7 +529,6 @@ class TestCopyObject:
                 "due to S3 API error: An error occurred (NoSuchKey) when calling "
                 "the CopyObject operation: The specified key does not exist",
             ),
-            # Case 2: Unexpected generic exception during copy operation
             (
                 Exception("Unexpected S3 error"),
                 "Unexpected S3 error",
@@ -578,7 +547,6 @@ class TestCopyObject:
         expected_log_msg: str,
     ) -> None:
         """Test exception handling and logging behavior for copy_object failures."""
-        # Arrange
         source_bucket = "source-bkt"
         source_key = "src-key"
         dest_bucket = "dest-bkt"
@@ -592,7 +560,6 @@ class TestCopyObject:
             expected_log_msg,
         )
 
-        # Act & Assert
         with pytest.raises(type(exception_instance), match=match_pattern):
             s3_builder.copy_object(
                 source_bucket=source_bucket,
@@ -631,7 +598,6 @@ class TestDeleteObject:
         """Test successful execution of delete_object across various bucket
         and key variations.
         """
-        # Arrange
         caplog.set_level(logging.INFO)
 
         expected_log: tuple[str, int, str] = (
@@ -640,10 +606,8 @@ class TestDeleteObject:
             f"The object {bucket}/{key} was successfully deleted",
         )
 
-        # Act
         result = s3_builder.delete_object(bucket=bucket, key=key)
 
-        # Assert
         mock_s3_client.delete_object.assert_called_once_with(Bucket=bucket, Key=key)
         assert result is True
         assert expected_log in caplog.record_tuples
@@ -651,7 +615,6 @@ class TestDeleteObject:
     @pytest.mark.parametrize(
         "exception_instance, match_pattern, expected_log_msg",
         [
-            # Case 1: AWS API ClientError (e.g., AccessDenied or internal S3 error)
             (
                 ClientError(
                     {
@@ -667,7 +630,6 @@ class TestDeleteObject:
                 "An error occurred (AccessDenied) when calling the "
                 "DeleteObject operation: Access Denied",
             ),
-            # Case 2: Unexpected generic exception during deletion
             (
                 Exception("Unexpected deletion error"),
                 "Unexpected deletion error",
@@ -686,7 +648,6 @@ class TestDeleteObject:
         expected_log_msg: str,
     ) -> None:
         """Test exception handling and logging behavior for delete_object failures."""
-        # Arrange
         bucket = "my-bucket"
         key = "my-key"
 
@@ -698,7 +659,6 @@ class TestDeleteObject:
             expected_log_msg,
         )
 
-        # Act & Assert
         with pytest.raises(type(exception_instance), match=match_pattern):
             s3_builder.delete_object(bucket=bucket, key=key)
 
@@ -712,9 +672,7 @@ class TestMoveObject:
     @pytest.mark.parametrize(
         "source_bucket, source_key, dest_bucket, dest_key",
         [
-            # Case 1: Move within the same bucket (organizing/renaming)
             ("my-bucket", "inbox/file.txt", "my-bucket", "processed/file.txt"),
-            # Case 2: Move across different buckets
             ("source-bucket", "raw/data.csv", "dest-bucket", "archive/data.csv"),
         ],
     )
@@ -730,7 +688,6 @@ class TestMoveObject:
         """Test successful execution of move_object across
         various bucket combinations.
         """
-        # Arrange
         caplog.set_level(logging.INFO)
 
         with (
@@ -744,7 +701,6 @@ class TestMoveObject:
                 f"to {dest_bucket}/{dest_key}",
             )
 
-            # Act
             result = s3_builder.move_object(
                 source_bucket=source_bucket,
                 source_key=source_key,
@@ -752,7 +708,6 @@ class TestMoveObject:
                 dest_key=dest_key,
             )
 
-            # Assert
             mock_copy.assert_called_once_with(
                 source_bucket=source_bucket,
                 source_key=source_key,
@@ -766,8 +721,6 @@ class TestMoveObject:
     @pytest.mark.parametrize(
         "exception_instance, failing_step, match_pattern, expected_log_msg",
         [
-            # Case 1: ClientError during copy -> delete MUST NOT be called
-            # (short-circuit)
             (
                 ClientError(
                     {
@@ -784,7 +737,6 @@ class TestMoveObject:
                 "due to S3 API error: An error occurred (NoSuchKey) when calling "
                 "the CopyObject operation: The specified key does not exist",
             ),
-            # Case 2: ClientError during delete (after successful copy)
             (
                 ClientError(
                     {
@@ -801,7 +753,6 @@ class TestMoveObject:
                 "due to S3 API error: An error occurred (AccessDenied) when calling "
                 "the DeleteObject operation: Access Denied",
             ),
-            # Case 3: Unexpected generic exception during copy step
             (
                 Exception("Unexpected error during move"),
                 "copy",
@@ -821,7 +772,6 @@ class TestMoveObject:
         expected_log_msg: str,
     ) -> None:
         """Test exception handling and short-circuit logic for move_object failures."""
-        # Arrange
         source_bucket = "src-bkt"
         source_key = "src-key"
         dest_bucket = "dst-bkt"
@@ -847,7 +797,6 @@ class TestMoveObject:
                 expected_log_msg,
             )
 
-            # Act & Assert
             with pytest.raises(type(exception_instance), match=match_pattern):
                 s3_builder.move_object(
                     source_bucket=source_bucket,

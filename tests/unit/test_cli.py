@@ -161,21 +161,18 @@ class TestCliArgumentParser:
 
     def test_parse_arguments_verbose_flag(self) -> None:
         """Verify that --verbose / -v flag is parsed correctly."""
-        # Testa a flag longa --verbose
         test_args_long = ["cli.py", "-b", "my-target-bucket", "--verbose"]
         with patch.object(sys, "argv", test_args_long):
             args = cli.parse_arguments()
 
         assert args.verbose is True
 
-        # Testa o atalho curto -v
         test_args_short = ["cli.py", "-b", "my-target-bucket", "-v"]
         with patch.object(sys, "argv", test_args_short):
             args_short = cli.parse_arguments()
 
         assert args_short.verbose is True
 
-        # Verifica se vem False por padrão quando omitida
         test_args_default = ["cli.py", "-b", "my-target-bucket"]
         with patch.object(sys, "argv", test_args_default):
             args_default = cli.parse_arguments()
@@ -188,10 +185,8 @@ class TestCliDisplayRules:
 
     def test_display_rules_output(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Verify that display_rules prints active extension routing rules correctly."""
-        # Act
         cli.display_rules()
 
-        # Assert
         captured = capsys.readouterr()
         assert "Active Extension Routing Rules" in captured.out
         assert "DOCUMENTS" in captured.out
@@ -209,7 +204,6 @@ class TestCliMainExecution:
         mock_s3_builder: MagicMock,
     ) -> None:
         """Verify the complete successful execution flow inside main using fixtures."""
-        # Arrange
         test_args = ["cli.py", "-b", "production-bucket", "-s", "incoming/"]
 
         with patch("s3_file_organizer.cli.S3Builder", return_value=mock_s3_builder):
@@ -220,21 +214,17 @@ class TestCliMainExecution:
                 "failed": 0,
             }
 
-            # Act
             with patch.object(sys, "argv", test_args):
                 cli.main()
 
-        # Assert
         mock_setup_logging.assert_called_once()
         mock_file_organizer_cls.assert_called_once()
-
         mock_organizer_instance.organize_bucket.assert_called_once_with(
             bucket="production-bucket",
             source_prefix="incoming/",
             uncategorized_prefix=None,
             dry_run=False,
         )
-
         mock_upload_log.assert_called_once_with(
             s3_builder=mock_s3_builder,
             log_bucket="my-logs-localstack",
@@ -250,7 +240,6 @@ class TestCliMainExecution:
         """Verify that passing --dry-run correctly forwards dry_run=True
         to organize_bucket.
         """
-        # Arrange
         test_args = ["cli.py", "-b", "production-bucket", "--dry-run"]
 
         with patch("s3_file_organizer.cli.S3Builder", return_value=mock_s3_builder):
@@ -261,11 +250,9 @@ class TestCliMainExecution:
                 "failed": 0,
             }
 
-            # Act
             with patch.object(sys, "argv", test_args):
                 cli.main()
 
-        # Assert
         mock_organizer_instance.organize_bucket.assert_called_once_with(
             bucket="production-bucket",
             source_prefix=None,
@@ -277,10 +264,8 @@ class TestCliMainExecution:
         """Verify that passing --rules displays rules, skips pipeline,
         and exits with code 0.
         """
-        # Arrange
         test_args = ["cli.py", "--rules"]
 
-        # Act & Assert
         with (
             patch.object(sys, "argv", test_args),
             patch("s3_file_organizer.cli.display_rules") as mock_display,
@@ -295,10 +280,8 @@ class TestCliMainExecution:
         """Verify that missing bucket without --rules prints error
         and exits with code 1.
         """
-        # Arrange
         test_args = ["cli.py"]
 
-        # Act & Assert
         with patch.object(sys, "argv", test_args):
             with pytest.raises(SystemExit) as exc_info:
                 cli.main()
@@ -315,7 +298,6 @@ class TestCliMainExecution:
         """Verify that exceptions during organization are caught and
         log upload still executes in finally.
         """
-        # Arrange
         test_args = ["cli.py", "-b", "error-bucket"]
 
         with patch("s3_file_organizer.cli.S3Builder", return_value=mock_s3_builder):
@@ -324,15 +306,12 @@ class TestCliMainExecution:
                 "S3 Network Timeout"
             )
 
-            # Act
             with patch.object(sys, "argv", test_args):
                 cli.main()
 
-        # Assert
         mock_setup_logging.assert_called_once()
         mock_file_organizer_cls.assert_called_once()
         mock_organizer_instance.organize_bucket.assert_called_once()
-
         mock_upload_log.assert_called_once_with(
             s3_builder=mock_s3_builder,
             log_bucket="my-logs-localstack",
@@ -348,7 +327,6 @@ class TestCliMainExecution:
         """Verify that a custom --log-bucket is successfully forwarded
         to upload_log_to_s3.
         """
-        # Arrange
         test_args = ["cli.py", "-b", "my-bucket", "-l", "my-custom-audit-bucket"]
 
         with patch("s3_file_organizer.cli.S3Builder", return_value=mock_s3_builder):
@@ -359,11 +337,9 @@ class TestCliMainExecution:
                 "failed": 0,
             }
 
-            # Act
             with patch.object(sys, "argv", test_args):
                 cli.main()
 
-        # Assert
         mock_upload_log.assert_called_once_with(
             s3_builder=mock_s3_builder,
             log_bucket="my-custom-audit-bucket",
@@ -375,9 +351,12 @@ class TestCliMainExecution:
         mock_file_organizer_cls: MagicMock,
         mock_upload_log: MagicMock,
         mock_s3_builder: MagicMock,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Verify that passing --verbose sets the root logger level to DEBUG."""
-        # Arrange
+        """Verify that passing --verbose sets the root logger level to DEBUG
+        and emits the verbose startup message.
+        """
+        caplog.set_level(logging.DEBUG)
         test_args = ["cli.py", "-b", "production-bucket", "--verbose"]
 
         with patch("s3_file_organizer.cli.S3Builder", return_value=mock_s3_builder):
@@ -388,10 +367,8 @@ class TestCliMainExecution:
                 "failed": 0,
             }
 
-            # Act
             with patch.object(sys, "argv", test_args):
                 cli.main()
 
-        # Assert
-        # Confirma que o nível do logger raiz mudou para DEBUG
         assert logging.getLogger().getEffectiveLevel() == logging.DEBUG
+        assert "Verbose mode enabled" in caplog.text

@@ -1,3 +1,5 @@
+"""Unit tests for the FileOrganizer class."""
+
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -41,13 +43,13 @@ class TestGetTargetPrefix:
         "source_key, expected_prefix",
         [
             ("record.pdf", "documents"),
-            ("inbox/subfolder/RECORD.PDF", "documents"),  # Uppercase extension
+            ("inbox/subfolder/RECORD.PDF", "documents"),
             ("data.csv", "data"),
-            ("photo.PNG", "images"),  # Uppercase extension
-            ("document.txt", "documents"),  # Extensão mapeada válida
-            ("unknown_file.xyz", None),  # Unmapped extension
-            ("README", None),  # No extension
-            ("inbox/.gitignore", None),  # Hidden file without valid extension
+            ("photo.PNG", "images"),
+            ("document.txt", "documents"),
+            ("unknown_file.xyz", None),
+            ("README", None),
+            ("inbox/.gitignore", None),
         ],
     )
     def test_get_target_prefix(
@@ -68,15 +70,10 @@ class TestResolveDestinationKey:
     @pytest.mark.parametrize(
         "source_key, target_prefix, expected_destination",
         [
-            # Standard prefix with trailing slash
             ("inbox/fatura.pdf", "documents/", "documents/fatura.pdf"),
-            # Prefix without trailing slash (should handle and prevent double slashes)
             ("inbox/fatura.pdf", "documents", "documents/fatura.pdf"),
-            # Prefix with leading and trailing slash
             ("inbox/sub/fatura.pdf", "/documents/", "documents/fatura.pdf"),
-            # Empty prefix (should place only the filename at the root)
             ("inbox/dados.csv", "", "dados.csv"),
-            # Prefix containing only a slash
             ("inbox/dados.csv", "/", "dados.csv"),
         ],
     )
@@ -120,15 +117,10 @@ class TestOrganizeBucket:
             bucket="my-bucket", source_prefix="inbox/"
         )
 
-        # Assert execution statistics
         assert stats == {"moved": 3, "skipped": 0, "failed": 0}
-
-        # Assert correct listing arguments
         mock_s3_builder.list_objects.assert_called_once_with(
             bucket="my-bucket", prefix="inbox/"
         )
-
-        # Assert exact sequential S3 move invocations
         assert mock_s3_builder.move_object.call_count == 3
         mock_s3_builder.move_object.assert_has_calls(
             [
@@ -237,9 +229,9 @@ class TestOrganizeBucket:
     @pytest.mark.parametrize(
         "invalid_object",
         [
-            {"Key": "inbox/"},  # Directory marker key
-            {"Key": ""},  # Empty string key
-            {},  # Missing Key entry
+            {"Key": "inbox/"},
+            {"Key": ""},
+            {},
         ],
     )
     def test_organize_bucket_skips_invalid_keys_and_directories(
@@ -272,7 +264,6 @@ class TestOrganizeBucket:
             {"Key": "doc3.pdf"},
         ]
 
-        # Simulate success for file 1, exception for file 2, success for file 3
         mock_s3_builder.move_object.side_effect = [
             None,
             RuntimeError("S3 Connection Interrupted"),
@@ -281,7 +272,6 @@ class TestOrganizeBucket:
 
         stats = file_organizer.organize_bucket(bucket="my-bucket")
 
-        # Verify execution continues past errors and metrics accurately record state
         assert stats == {"moved": 2, "skipped": 0, "failed": 1}
         assert mock_s3_builder.move_object.call_count == 3
 

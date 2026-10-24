@@ -20,7 +20,6 @@ class TestUploadLogToS3:
         with patch("s3_file_organizer.utils.os.path.exists", return_value=False):
             upload_log_to_s3(s3_builder=mock_s3_builder, log_bucket="logs-bucket")
 
-        # Assert no client method was invoked
         mock_s3_builder.s3_client.head_bucket.assert_not_called()
         mock_s3_builder.s3_client.create_bucket.assert_not_called()
         mock_s3_builder.s3_client.upload_file.assert_not_called()
@@ -29,16 +28,12 @@ class TestUploadLogToS3:
         self, mock_s3_builder: MagicMock, tmp_path: Path
     ) -> None:
         """Ensure log is uploaded directly when the target log bucket already exists."""
-        # Arrange: creates a local temporary log file
         log_file = tmp_path / "app.log"
         log_file.write_text("Execution log sample content")
 
         mock_client = mock_s3_builder.s3_client
-
-        # Simulates the existence of the bucket
         mock_client.head_bucket.return_value = {}
 
-        # Mock datetime to ensure consistency in the S3 path format
         with (
             patch("s3_file_organizer.utils.LOG_FILE_PATH", str(log_file)),
             patch("s3_file_organizer.utils.datetime") as mock_datetime,
@@ -47,18 +42,15 @@ class TestUploadLogToS3:
                 "2026" if fmt == "%Y" else ("10" if fmt == "%m" else "20261012_120000")
             )
 
-            # Act
             upload_log_to_s3(
                 s3_builder=mock_s3_builder,
                 log_bucket="logs-bucket",
             )
 
-        # Assert
         mock_client.head_bucket.assert_called_once_with(Bucket="logs-bucket")
         mock_client.create_bucket.assert_not_called()
         mock_client.upload_file.assert_called_once()
 
-        # Validates the structure of the arguments passed during the upload
         _, kwargs = mock_client.upload_file.call_args
         assert kwargs["Bucket"] == "logs-bucket"
         assert kwargs["Filename"] == str(log_file)
@@ -70,21 +62,17 @@ class TestUploadLogToS3:
         """Ensure target log bucket is provisioned automatically when
         head_bucket raises an error.
         """
-        # Arrange
         log_file = tmp_path / "app.log"
         log_file.write_text("Execution log sample content")
 
         mock_client = mock_s3_builder.s3_client
-        # Simulates that the bucket does not exist (raising a botocore ClientError)
         mock_client.head_bucket.side_effect = ClientError(
             {"Error": {"Code": "404", "Message": "Not Found"}}, "HeadBucket"
         )
 
         with patch("s3_file_organizer.utils.LOG_FILE_PATH", str(log_file)):
-            # Act
             upload_log_to_s3(s3_builder=mock_s3_builder, log_bucket="logs-bucket")
 
-        # Assert
         mock_client.head_bucket.assert_called_once_with(Bucket="logs-bucket")
         mock_client.create_bucket.assert_called_once_with(Bucket="logs-bucket")
         mock_client.upload_file.assert_called_once()
@@ -98,7 +86,6 @@ class TestUploadLogToS3:
         """Ensure runtime errors during upload are safely caught and
         logged as errors.
         """
-        # Arrange
         caplog.set_level(logging.ERROR)
         log_file = tmp_path / "app.log"
         log_file.write_text("Execution log sample content")
@@ -108,9 +95,7 @@ class TestUploadLogToS3:
         mock_client.upload_file.side_effect = RuntimeError("S3 Connection Lost")
 
         with patch("s3_file_organizer.utils.LOG_FILE_PATH", str(log_file)):
-            # Act
             upload_log_to_s3(s3_builder=mock_s3_builder, log_bucket="logs-bucket")
 
-        # Assert
         assert "Failed to upload log file to S3: S3 Connection Lost" in caplog.text
         mock_client.upload_file.assert_called_once()
