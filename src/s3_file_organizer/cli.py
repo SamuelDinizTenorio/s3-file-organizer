@@ -100,6 +100,13 @@ def parse_arguments() -> argparse.Namespace:
         help="Simulate file organization without making any changes in S3.",
     )
 
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable detailed debug logging output.",
+    )
+
     return parser.parse_args()
 
 
@@ -133,6 +140,10 @@ def main() -> None:
         sys.exit(1)
 
     setup_logging()
+
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger.debug("Verbose mode enabled. Detailed logs will be shown.")
 
     s3_builder = S3Builder(
         endpoint_url=AWS_ENDPOINT_URL,

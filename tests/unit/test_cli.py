@@ -1,5 +1,6 @@
 """Unit tests for the CLI module (cli.py)."""
 
+import logging
 import sys
 from importlib.metadata import PackageNotFoundError
 from unittest.mock import MagicMock, patch
@@ -157,6 +158,29 @@ class TestCliArgumentParser:
             args_short = cli.parse_arguments()
 
         assert args_short.log_bucket == "short-audit-logs"
+
+    def test_parse_arguments_verbose_flag(self) -> None:
+        """Verify that --verbose / -v flag is parsed correctly."""
+        # Testa a flag longa --verbose
+        test_args_long = ["cli.py", "-b", "my-target-bucket", "--verbose"]
+        with patch.object(sys, "argv", test_args_long):
+            args = cli.parse_arguments()
+
+        assert args.verbose is True
+
+        # Testa o atalho curto -v
+        test_args_short = ["cli.py", "-b", "my-target-bucket", "-v"]
+        with patch.object(sys, "argv", test_args_short):
+            args_short = cli.parse_arguments()
+
+        assert args_short.verbose is True
+
+        # Verifica se vem False por padrão quando omitida
+        test_args_default = ["cli.py", "-b", "my-target-bucket"]
+        with patch.object(sys, "argv", test_args_default):
+            args_default = cli.parse_arguments()
+
+        assert args_default.verbose is False
 
 
 class TestCliDisplayRules:
@@ -344,3 +368,30 @@ class TestCliMainExecution:
             s3_builder=mock_s3_builder,
             log_bucket="my-custom-audit-bucket",
         )
+
+    def test_main_verbose_flag_sets_debug_level(
+        self,
+        mock_setup_logging: MagicMock,
+        mock_file_organizer_cls: MagicMock,
+        mock_upload_log: MagicMock,
+        mock_s3_builder: MagicMock,
+    ) -> None:
+        """Verify that passing --verbose sets the root logger level to DEBUG."""
+        # Arrange
+        test_args = ["cli.py", "-b", "production-bucket", "--verbose"]
+
+        with patch("s3_file_organizer.cli.S3Builder", return_value=mock_s3_builder):
+            mock_organizer_instance = mock_file_organizer_cls.return_value
+            mock_organizer_instance.organize_bucket.return_value = {
+                "moved": 1,
+                "skipped": 0,
+                "failed": 0,
+            }
+
+            # Act
+            with patch.object(sys, "argv", test_args):
+                cli.main()
+
+        # Assert
+        # Confirma que o nível do logger raiz mudou para DEBUG
+        assert logging.getLogger().getEffectiveLevel() == logging.DEBUG
