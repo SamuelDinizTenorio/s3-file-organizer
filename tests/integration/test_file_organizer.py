@@ -13,7 +13,6 @@ class TestFileOrganizerHelpersIntegration:
         """Verify get_target_prefix logic when integrated with a live
         S3Builder instance.
         """
-        # Standard extension routing
         assert (
             integration_file_organizer.get_target_prefix("incoming/report.pdf")
             == "documents"
@@ -22,14 +21,10 @@ class TestFileOrganizerHelpersIntegration:
             integration_file_organizer.get_target_prefix("raw_data/metrics.csv")
             == "data"
         )
-
-        # Case-insensitivity verification
         assert (
             integration_file_organizer.get_target_prefix("uploads/PHOTO.JPEG")
             == "images"
         )
-
-        # Unmapped extension and extensionless keys
         assert integration_file_organizer.get_target_prefix("binaries/app.exe") is None
         assert integration_file_organizer.get_target_prefix("DOCKERFILE") is None
 
@@ -55,22 +50,18 @@ class TestFileOrganizerHelpersIntegration:
         """Verify resolve_destination_key path formatting with a real
         S3Builder instance.
         """
-
-        # Standard destination construction
         dest = integration_file_organizer.resolve_destination_key(
             source_key="incoming/subfolder/invoice.pdf",
             target_prefix="documents/",
         )
         assert dest == "documents/invoice.pdf"
 
-        # Redundant slash sanitization
         dest_clean = integration_file_organizer.resolve_destination_key(
             source_key="staging/data.json",
             target_prefix="//data///",
         )
         assert dest_clean == "data/data.json"
 
-        # Empty/root prefix handling
         root_dest = integration_file_organizer.resolve_destination_key(
             source_key="staging/file.txt",
             target_prefix="/",
@@ -93,8 +84,6 @@ class TestOrganizeBucketIntegration:
         and removes sources.
         """
         client = integration_s3_builder.s3_client
-
-        # 1. Seed bucket with sample files under inbox/ prefix
         client.put_object(
             Bucket=test_bucket,
             Key="inbox/report.pdf",
@@ -111,24 +100,19 @@ class TestOrganizeBucketIntegration:
             Body=b"PNG content",
         )
 
-        # 2. Execute organization
         stats = integration_file_organizer.organize_bucket(
             bucket=test_bucket, source_prefix="inbox/"
         )
 
-        # 3. Assert execution metrics
         assert stats == {"moved": 3, "skipped": 0, "failed": 0}
 
-        # 4. Assert bucket state
         objects = integration_s3_builder.list_objects(bucket=test_bucket)
         keys = [obj["Key"] for obj in objects if obj.get("Key")]
 
-        # Target destinations must exist
         assert "documents/report.pdf" in keys
         assert "data/metrics.csv" in keys
         assert "images/photo.png" in keys
 
-        # Source keys must no longer exist
         assert "inbox/report.pdf" not in keys
         assert "inbox/metrics.csv" not in keys
         assert "inbox/photo.png" not in keys
@@ -158,7 +142,6 @@ class TestOrganizeBucketIntegration:
         objects = integration_s3_builder.list_objects(bucket=test_bucket)
         keys = [obj["Key"] for obj in objects if obj.get("Key")]
 
-        # The source file must REMAIN at the source, and the destination must NOT exist.
         assert "inbox/dry_run_test.pdf" in keys
         assert "documents/dry_run_test.pdf" not in keys
 
@@ -215,7 +198,6 @@ class TestOrganizeBucketIntegration:
         objects = integration_s3_builder.list_objects(bucket=test_bucket)
         keys = [obj["Key"] for obj in objects if obj.get("Key")]
 
-        # Object should remain in its original location
         assert "inbox/unknown.xyz" in keys
 
     def test_organize_bucket_skips_already_organized_integration(
@@ -265,9 +247,6 @@ class TestOrganizeBucketIntegration:
         objects = integration_s3_builder.list_objects(bucket=test_bucket)
         keys = [obj["Key"] for obj in objects if obj.get("Key")]
 
-        # inbox/file1.pdf was organized into documents/
         assert "documents/file1.pdf" in keys
         assert "inbox/file1.pdf" not in keys
-
-        # archive/file2.pdf was ignored because it wasn't under inbox/
         assert "archive/file2.pdf" in keys

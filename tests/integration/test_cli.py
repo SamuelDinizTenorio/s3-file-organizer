@@ -19,7 +19,6 @@ class TestCliIntegration:
         log_bucket: str,
     ) -> None:
         """Verify end-to-end execution of cli.main using LocalStack resources."""
-        # Sends test files to the isolated bucket
         sample_files = {
             "inbox/integration_doc.pdf": b"PDF content",
             "inbox/integration_file.xyz": b"Unmapped content",
@@ -42,14 +41,12 @@ class TestCliIntegration:
         with patch.object(sys, "argv", test_args):
             cli.main()
 
-        # Validations of organized files
         objects_in_bucket = integration_s3_builder.list_objects(bucket=test_bucket)
         keys = [obj["Key"] for obj in objects_in_bucket]
 
         assert "documents/integration_doc.pdf" in keys
         assert "custom-others/integration_file.xyz" in keys
 
-        # Validates log transmission using the log_bucket fixture.
         log_objects = integration_s3_builder.list_objects(bucket=log_bucket)
         assert len(log_objects) > 0
 
@@ -62,14 +59,12 @@ class TestCliIntegration:
         """Verify end-to-end CLI execution using long-form arguments
         (--bucket, --source-prefix).
         """
-        # Send test file to inbox inbox/
         integration_s3_builder.s3_client.put_object(
             Bucket=test_bucket,
             Key="inbox/long_flag_doc.pdf",
             Body=b"PDF content via long flags",
         )
 
-        # Simulates the call using exclusively the full flags.
         test_args = [
             "cli.py",
             "--bucket",
@@ -81,14 +76,12 @@ class TestCliIntegration:
         with patch.object(sys, "argv", test_args):
             cli.main()
 
-        # Validations of organized files
         objects = integration_s3_builder.list_objects(bucket=test_bucket)
         keys = [obj["Key"] for obj in objects]
 
         assert "inbox/long_flag_doc.pdf" not in keys
         assert "documents/long_flag_doc.pdf" in keys
 
-        # Validates log submission
         log_objects = integration_s3_builder.list_objects(bucket=log_bucket)
         assert len(log_objects) > 0
 
@@ -99,13 +92,11 @@ class TestCliIntegration:
         log_bucket: str,
     ) -> None:
         """Verify end-to-end CLI execution with --dry-run against LocalStack."""
-        # Arrange
         integration_s3_builder.s3_client.put_object(
             Bucket=test_bucket,
             Key="inbox/dry_run_cli_doc.pdf",
             Body=b"PDF content for dry run CLI test",
         )
-
         test_args = [
             "cli.py",
             "-b",
@@ -115,19 +106,15 @@ class TestCliIntegration:
             "--dry-run",
         ]
 
-        # Act
         with patch.object(sys, "argv", test_args):
             cli.main()
 
-        # Assert
-        # The file must remain at the source and NOT be moved within S3
         objects = integration_s3_builder.list_objects(bucket=test_bucket)
         keys = [obj["Key"] for obj in objects]
 
         assert "inbox/dry_run_cli_doc.pdf" in keys
         assert "documents/dry_run_cli_doc.pdf" not in keys
 
-        # Validates log transmission.
         log_objects = integration_s3_builder.list_objects(bucket=log_bucket)
         assert len(log_objects) > 0
 
@@ -145,8 +132,6 @@ class TestCliIntegration:
         with patch.object(sys, "argv", test_args):
             cli.main()
 
-        # Ensures that the error log was generated and sent to S3
-        # even after the failure.
         log_objects = integration_s3_builder.list_objects(bucket=log_bucket)
         assert len(log_objects) > 0
 
@@ -191,7 +176,6 @@ class TestCliIntegration:
         against LocalStack.
         """
         custom_log_bucket = "my-custom-audit-bucket-test"
-
         test_args = [
             "cli.py",
             "-b",
@@ -203,11 +187,8 @@ class TestCliIntegration:
         with patch.object(sys, "argv", test_args):
             cli.main()
 
-        # Verify that the logs were successfully sent to the custom bucket in LocalStack
         log_objects = integration_s3_builder.list_objects(bucket=custom_log_bucket)
         assert len(log_objects) > 0
 
-        # Verify that the temporal structure (year/month) has been respected within
-        # the custom bucket.
         keys = [obj["Key"] for obj in log_objects]
         assert any("organizer_logs/" in key for key in keys)
